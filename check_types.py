@@ -1,0 +1,19 @@
+import magic
+from fastapi import HTTPException
+
+DOZWOLONE_FORMATY = {
+    'application/pdf': '.pdf',
+    'text/plain': '.txt',
+    'image/jpeg': '.jpg',
+    'image/png': '.png',
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document': '.docx'
+}
+
+def check_type(bytes):
+    
+    typ = magic.from_buffer(bytes)
+    if typ not in DOZWOLONE_FORMATY:
+
+        raise HTTPException(415, detail=f"{typ} is not allowed, allowed types: PDF, TXT, JPG, PNG, DOCX")
+
+    return DOZWOLONE_FORMATY[typ]    

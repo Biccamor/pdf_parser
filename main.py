@@ -1,28 +1,28 @@
-import pymupdf
-from gliner2 import GLiNER2
+from fastapi import FastAPI, UploadFile, File
+import tempfile
+import shutil
+from marker_test import parser
+from check_types import check_type
 
-# TODO: ulepszyc to jak wyjmujemy inforamcje zeby latwiej (i z wieksza skutecznoscia) gliner2 je dopasowywal
-# TODO: extract danych osobwych na start
-# TODO: testy  duzo testow
-# TODO: 
+app = FastAPI()
 
-extractor = GLiNER2.from_pretrained("fastino/gliner2-multi-v1")
+@app.post("/parser")
+async def main(cv: UploadFile = File(...)):
 
-def extract_text_pymupdf(pdf_path):
-    doc = pymupdf.open(pdf_path)
-    try:
-        text = ""
-        for page in doc:
-            page_text = page.get_text("text")
-            if not isinstance(page_text, str):
-                page_text = str(page_text)
-            text += page_text  # plain text
-        return text
-    finally:
-        doc.close()
+    bytes = await cv.read(2048)
+    await cv.seek(0)
+    typ = check_type(bytes)
 
+    if typ == ".txt": 
+        read = await cv.read()
+        return read.decode("utf-8")
 
-# Extract text from a PDF.
-text = extract_text_pymupdf("pdfs/pdf2.pdf")
-result = extractor.extract_entities(text, ["Umiejętności", "Zainteresowania", "Języki", "Wykształcenie", "Dane osobowe"])
-print(result)
+    with tempfile.NamedTemporaryFile(suffix=typ, delete=True) as file:
+        
+        shutil.copyfileobj(cv.file, file)
+        file.flush()
+        path_file = file.name
+
+        clean_text = parser(path_file)
+
+        return clean_text

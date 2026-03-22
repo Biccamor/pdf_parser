@@ -1,0 +1,6 @@
+services:
+  parser:
+    build: . 
+    container_name: parser
+    ports: 8010:8010
+    restart: unless-stopped
