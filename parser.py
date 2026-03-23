@@ -13,4 +13,4 @@ def parser(file):
     return text
 
 if __name__ == "__main__":
-    parser("pdfs/pdf1.pdf")
+    print(parser(r"C:\Users\fabia\.cache\kagglehub\datasets\hadikp\resume-data-pdf\versions\1\Resumes PDF\Arts\1.pdf"))
