@@ -1,7 +1,7 @@
 from fastapi import FastAPI, UploadFile, File
 import tempfile
 import shutil
-from parser import parser
+from parser import parse_pdf
 from check_types import check_type
 import pymupdf4llm
 
@@ -16,7 +16,7 @@ async def main(cv: UploadFile = File(...)):
 
     if typ == ".txt": 
         read = await cv.read()
-        return read.decode("utf-8")
+        return {"text": f"{read.decode('utf-8')}"}
 
     with tempfile.NamedTemporaryFile(suffix=typ, delete=True) as file:
         
@@ -27,7 +27,7 @@ async def main(cv: UploadFile = File(...)):
         clean_text = pymupdf4llm.to_markdown(path_file)
 
         if len(clean_text) < 20:
-            
-            clean_text = parser(path_file)
 
-        return clean_text
+            clean_text = parse_pdf(path_file)
+
+        return {"text": f"{clean_text}"}
