@@ -1,25 +1,35 @@
 services:
   parser:
-    build: . 
-    container_name: parser
-    ports: 
-     - 8010:8010
-    restart: unless-stopped
-
+    build: .
+    container_name: ai_parser
+    user: "${UID:-1000}:${GID:-1000}" 
+    ports:
+      - "8010:8010"
+    
     volumes:
       - .:/parser
-
-      - ~/.cache/huggingface:/home/user/.cache/huggingface
-
+      - ai_models_cache:/home/user/.cache 
     command: uvicorn main:app --host 0.0.0.0 --port 8010 --reload
+
     deploy:
       resources:
         limits:
-          cpus: '4.0'   
+          cpus: '4.0'
           memory: 8G
+
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8010/docs"]
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 40s
+      start_period: 45s
+
+    networks:
+      - agh_project_network
+
+volumes:
+  ai_models_cache:
+
+networks:
+  agh_project_network:
+    driver: bridge

@@ -1,21 +1,36 @@
 FROM python:3.11.9-slim
 
-WORKDIR /parser
-
+# Instalujemy zależności systemowe dla grafiki (Marker/OpenCV tego potrzebują)
 RUN apt-get update && apt-get install -y \
-    libmagic1 \
-    libgl1 \
+    libgl1-mesa-glx \
     libglib2.0-0 \
+    libmagic1 \
+    curl \
     && rm -rf /var/lib/apt/lists/*
 
-COPY ./requirements.txt /parser/requirements.txt
-RUN pip install --no-cache-dir --upgrade -r /parser/requirements.txt
+# Tworzymy użytkownika, żeby nie pracować jako root (bezpieczeństwo!)
+RUN groupadd -g 1000 user && useradd -u 1000 -g user -m user
 
-RUN python -c "from marker.util import download_font; download_font()"
+# Przygotowujemy foldery ZANIM przełączymy się na użytkownika
+RUN mkdir -p /home/user/.cache/huggingface /home/user/.cache/surya /parser && \
+    chown -R 1000:1000 /home/user /parser
 
-RUN useradd -m user
-COPY --chown=user:user . /parser/
+# Ustawiamy katalog roboczy
+WORKDIR /parser
 
-USER user 
+# Kopiujemy requirements i instalujemy paczki
+COPY --chown=user:user requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
 
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8010", "--workers", "1"]
+# Kopiujemy resztę kodu
+COPY --chown=user:user . .
+
+# Ważne zmienne środowiskowe dla AI
+ENV HOME=/home/user
+ENV HF_HOME=/home/user/.cache/huggingface
+
+# Przełączamy się na użytkownika
+USER user
+
+# Port, na którym działa FastAPI
+EXPOSE 8010

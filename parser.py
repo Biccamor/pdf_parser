@@ -15,4 +15,5 @@ if __name__ == "__main__":
     converter = PdfConverter(
         artifact_dict=create_model_dict(),  
     )
-    print(parse_pdf(r"C:\Users\fabia\.cache\kagglehub\datasets\hadikp\resume-data-pdf\versions\1\Resumes PDF\Arts\1.pdf", converter=converter))
+   # print(parse_pdf(r"C:\Users\fabia\.cache\kagglehub\datasets\hadikp\resume-data-pdf\versions\1\Resumes PDF\Arts\1.pdf", converter=converter))
+    print(parse_pdf("pdfs/pdfKill.pdf", converter))
