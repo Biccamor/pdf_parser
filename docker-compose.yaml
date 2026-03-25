@@ -5,12 +5,21 @@ services:
     ports: 
      - 8010:8010
     restart: unless-stopped
-    healthcheck:
-      test: ["executable", "arg"]
-      interval: 1m30s
-      timeout: 30s
-      retries: 5
-      start_period: 30s
 
-volumes:
-  - parser
+    volumes:
+      - .:/parser
+
+      - ~/.cache/huggingface:/home/user/.cache/huggingface
+
+    command: uvicorn main:app --host 0.0.0.0 --port 8010 --reload
+    deploy:
+      resources:
+        limits:
+          cpus: '4.0'   
+          memory: 8G
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8010/docs"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
