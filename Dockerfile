@@ -11,6 +11,8 @@ RUN apt-get update && apt-get install -y \
 COPY ./requirements.txt /parser/requirements.txt
 RUN pip install --no-cache-dir --upgrade -r /parser/requirements.txt
 
+RUN python -c "from marker.util import download_font; download_font()"
+
 RUN useradd -m user
 COPY --chown=user:user . /parser/
 
