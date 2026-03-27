@@ -1,4 +1,4 @@
-from fastapi import FastAPI, UploadFile, File
+from fastapi import FastAPI, UploadFile, File, Request
 import tempfile
 import shutil
 from parser import parse_pdf
@@ -8,8 +8,18 @@ from fastapi.middleware.cors import CORSMiddleware
 from criterias import delete_others_unicode, images, years
 from marker.converters.pdf import PdfConverter
 from marker.models import create_model_dict
+import asyncio
+from contextlib import asynccontextmanager
+import os
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Ładuje model raz przy starcie
+    app.state.converter = await asyncio.to_thread(
+        lambda: PdfConverter(artifact_dict=create_model_dict())
+    )
+    yield
 
-app = FastAPI()
+app = FastAPI(lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
@@ -19,13 +29,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-converter = PdfConverter(
-    artifact_dict=create_model_dict(),  
-)
-
 @app.post("/parser")
 async def main(cv: UploadFile = File(...)):
-
+    converter = app.state.converter
     use_marker = False
     bytes = await cv.read(2048)
     await cv.seek(0)
@@ -37,23 +43,27 @@ async def main(cv: UploadFile = File(...)):
     model_name = "pymupdf4llm"
     with tempfile.NamedTemporaryFile(suffix=typ, delete=True) as file:
         
-        shutil.copyfileobj(cv.file, file)
+        content = await cv.read()
+        file.write(content)
         file.flush()
         path_file = file.name
 
-        clean_text = pymupdf4llm.to_markdown(path_file)
+        try: 
+            clean_text = pymupdf4llm.to_markdown(path_file)
 
-        if len(clean_text) < 20:
-            use_marker = True 
-        if images(clean_text)==True:
-            use_marker = True
-        if years(clean_text)==True:
-            use_marker=True
+            if len(clean_text) < 20:
+                use_marker = True 
+            if images(clean_text)==True:
+                use_marker = True
+            if years(clean_text)==True:
+                use_marker=True
 
-        if use_marker:
-            model_name = "marker"
-            clean_text = parse_pdf(path_file, converter=converter)
+            if use_marker:
+                model_name = "marker"
+                clean_text = await  asyncio.to_thread(parse_pdf, path_file, converter)
 
-        delete_others_unicode(clean_text)
+            delete_others_unicode(clean_text)
+        finally:
+            os.unlink(path_file)
 
         return {"model": model_name, "text": f"{clean_text}"}
