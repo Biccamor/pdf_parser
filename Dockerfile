@@ -1,6 +1,8 @@
 FROM python:3.11-slim
 
 RUN apt-get update && apt-get install -y \
+    tesseract-ocr \
+    tesseract-ocr-pol \
     libgl1 \
     libglib2.0-0 \
     libmagic1 \
@@ -9,13 +11,7 @@ RUN apt-get update && apt-get install -y \
 WORKDIR /parser
 
 COPY requirements.txt .
-RUN pip install --no-cache-dir torch torchvision --index-url https://download.pytorch.org/whl/cpu && \
-    pip install --no-cache-dir -r requirements.txt
-
-ENV HF_HOME=/root/.cache/huggingface
-
-# Pobierz modele przy buildzie - będą w image
-RUN python -c "from marker.models import create_model_dict; create_model_dict()"
+RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
 

@@ -1,3 +1,4 @@
 parser-venv/
 pdfs/
 experiments/
+__pycache__/
