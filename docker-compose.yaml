@@ -1,23 +1,11 @@
 services:
-  parser:
-    shm_size: '2gb'
-    mem_swappiness: 0  
-
-    environment:
-      - HF_HUB_OFFLINE=1         
-      - TRANSFORMERS_OFFLINE=1    
-      - HF_DATASETS_OFFLINE=1
-      - NO_PROXY="*"
+  parser:  
     build: .
     ports:
       - "8010:8010"
     volumes:
       - .:/parser
-      - ai_models_cache:/root/.cache
+      - parser:/root/.cache
     command: uvicorn main:app --host 0.0.0.0 --port 8010 --reload
-    deploy:
-      resources:
-        limits:
-          memory: 10G
 volumes:
-  ai_models_cache:
+  parser:

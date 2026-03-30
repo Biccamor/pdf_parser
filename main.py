@@ -6,9 +6,6 @@ import pymupdf4llm
 from tesseract_parser import get_text_tesseract
 from fastapi.middleware.cors import CORSMiddleware
 from criterias import delete_others_unicode, images, years
-from marker.converters.pdf import PdfConverter
-from marker.models import create_model_dict
-import asyncio
 import os
 
 
@@ -28,12 +25,11 @@ async def main(cv: UploadFile = File(...)):
     bytes = await cv.read(2048)
     await cv.seek(0)
     typ = check_type(bytes)
-    brutal = False
     if typ == ".txt": 
         read = await cv.read()
         return {"text": f"{read.decode('utf-8')}"}
     model_name = "pymupdf4llm"
-    with tempfile.NamedTemporaryFile(suffix=typ, delete=True) as file:
+    with tempfile.NamedTemporaryFile(suffix=typ, delete=False) as file:
         
         content = await cv.read()
         file.write(content)
@@ -41,11 +37,13 @@ async def main(cv: UploadFile = File(...)):
         path_file = file.name
 
         try: 
+
             clean_text = pymupdf4llm.to_markdown(path_file)
-            delete_others_unicode(clean_text)
             
-            if len(clean_text) < 20: 
+            if len(clean_text) < 10 or images(clean_text) or years(clean_text):  # type: ignore
+                model_name = "pymupdf"
                 clean_text = get_text_tesseract(path_file)
+            delete_others_unicode(clean_text) # type: ignore
 
 
         finally:

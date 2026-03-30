@@ -1,10 +1,11 @@
 import fitz
 import pytesseract
 from PIL import Image
+import os
 
-# WSKAZUJEMY ŚCIEŻKĘ DO ZAINSTALOWANEGO TESSERACTA
-# Upewnij się, że ścieżka poniżej zgadza się z tym, gdzie go zainstalowałeś
-pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
+if os.name == 'nt':  # tylko Windows
+    pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
+
 def get_text_tesseract(path: str):
     with fitz.open(path) as doc:
         text = ""
