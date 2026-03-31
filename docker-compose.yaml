@@ -2,10 +2,10 @@ services:
   parser:  
     build: .
     ports:
-      - "8010:8010"
+      - "8000:8000"
     volumes:
       - .:/parser
       - parser:/root/.cache
-    command: uvicorn main:app --host 0.0.0.0 --port 8010 --reload
+    command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
 volumes:
   parser:

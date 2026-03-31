@@ -6,7 +6,7 @@ DOZWOLONE_FORMATY = {
     'text/plain': '.txt',
     'image/jpeg': '.jpg',
     'image/png': '.png',
-    'application/vnd.openxmlformats-officedocument.wordprocessingml.document': '.docx'
+ #   'application/vnd.openxmlformats-officedocument.wordprocessingml.document': '.docx'
 }
 
 def check_type(bytes):

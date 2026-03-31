@@ -1,6 +1,5 @@
 from fastapi import FastAPI, UploadFile, File, Request
 import tempfile
-import pymupdf.layout
 from check_types import check_type
 import pymupdf4llm
 from tesseract_parser import get_text_tesseract
@@ -39,8 +38,9 @@ async def main(cv: UploadFile = File(...)):
         try: 
 
             clean_text = pymupdf4llm.to_markdown(path_file)
-            
-            if len(clean_text) < 10 or images(clean_text) or years(clean_text):  # type: ignore
+            # jezeli jest ponizej 30 znakow lub wiekszosc tego co znalazl pymupdf4llm to zdjecia to uzywamy klasycznego tesseract
+    
+            if len(clean_text) < 30 or images(clean_text) or years(clean_text):  # type: ignore
                 model_name = "pymupdf"
                 clean_text = get_text_tesseract(path_file)
             delete_others_unicode(clean_text) # type: ignore
