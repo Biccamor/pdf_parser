@@ -1,11 +1,11 @@
 from fastapi import FastAPI, UploadFile, File, Request
 import tempfile
-import pymupdf.layout
 from check_types import check_type
 import pymupdf4llm
+import fitz
 from tesseract_parser import get_text_tesseract
 from fastapi.middleware.cors import CORSMiddleware
-from criterias import delete_others_unicode, images, years
+from criterias import delete_others_unicode, is_scanned_pdf
 import os
 
 
@@ -25,26 +25,36 @@ async def main(cv: UploadFile = File(...)):
     bytes = await cv.read(2048)
     await cv.seek(0)
     typ = check_type(bytes)
-    if typ == ".txt": 
+
+    if typ == ".txt":
         read = await cv.read()
         return {"text": f"{read.decode('utf-8')}"}
+
     model_name = "pymupdf4llm"
+
     with tempfile.NamedTemporaryFile(suffix=typ, delete=False) as file:
-        
         content = await cv.read()
         file.write(content)
         file.flush()
         path_file = file.name
 
-        try: 
-
-            clean_text = pymupdf4llm.to_markdown(path_file)
-            
-            if len(clean_text) < 10 or images(clean_text) or years(clean_text):  # type: ignore
-                model_name = "pymupdf"
+        try:
+            # Obrazki (jpg/png) — od razu do Tesseract, pomijamy pymupdf4llm
+            if typ in (".jpg", ".jpeg", ".png"):
+                model_name = "tesseract"
                 clean_text = get_text_tesseract(path_file)
-            delete_others_unicode(clean_text) # type: ignore
+            else:
+                clean_text = pymupdf4llm.to_markdown(path_file)
 
+                # Pobierz liczbę stron do oceny jakości tekstu
+                with fitz.open(path_file) as doc:
+                    page_count = len(doc)
+
+                if is_scanned_pdf(clean_text, page_count):
+                    model_name = "tesseract"
+                    clean_text = get_text_tesseract(path_file)
+
+            delete_others_unicode(clean_text)  # type: ignore
 
         finally:
             os.unlink(path_file)

@@ -1,4 +1,4 @@
 parser-venv/
 pdfs/
-experiments/
+/.env
 __pycache__/
