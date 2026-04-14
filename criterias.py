@@ -2,8 +2,8 @@ import re
 import unicodedata
 
 def delete_others_unicode(text: str) -> str:
-    "".join(chr for chr in text if unicodedata.category(chr)[0] != "C" or chr in "\n\t") # check if character is weird char
-    return text
+    """Usuwa niedrukowane znaki kontrolne (C*) z tekstu, zachowując newline i tab."""
+    return "".join(c for c in text if unicodedata.category(c)[0] != "C" or c in "\n\t")
 
 def images(text: str):
     picture_tags = text.count("picture [") # check if there are too many images compared to text if so then it is badly foramted
@@ -14,7 +14,10 @@ def images(text: str):
     return False
 
 def years(text: str) -> bool:
-    if re.search(r"\d{4}\s+\d{4}", text): # check if dates arent spammed if they are then it is badly formated
+    """Wykrywa zduplikowane lata — symptom złego parsowania tabel/layoutu.
+    Normalny zakres dat (np. '2020 2023') nie triggeruje — szukamy 3+ lat z rzędu.
+    """
+    if re.search(r"(\d{4}\s+){2,}\d{4}", text):
         return True
     return False
 

@@ -1,54 +1,115 @@
-# Parser for CV
+# PDF Parser — CV Extractor
 
-App takes one CV file at the time (txt, png, jpg, pdf) and outputs it as a markdown or txt file, optimized for LLM processing.
-The parser works on endpoint `/parser` (POST).
+Mikroserwis FastAPI do ekstrakcji tekstu z plików CV. Obsługuje PDF, TXT, JPG i PNG. Automatycznie wykrywa zeskanowane (image-based) PDF-y i przełącza się na OCR przez Tesseract.
+
+---
+
+## 📐 Architektura
+
+```
+Plik wejściowy
+    │
+    ├─ TXT ──────────────────────── zwróć jako tekst
+    ├─ JPG / PNG ────────────────── Tesseract OCR
+    └─ PDF ──── pymupdf4llm ──► sprawdź jakość tekstu
+                                    │
+                                    ├─ OK ──────────── zwróć markdown
+                                    └─ SKAN ─────────── Tesseract OCR
+```
+
+Heurystyki wykrywania skanu (`is_scanned_pdf`):
+- < 100 znaków na stronę
+- zbyt wysoki stosunek tagów obrazkowych do słów
+- 3+ kolejne lata z rzędu (artefakt złego parsowania tabel)
+- < 50% znaków alfabetycznych (śmieci / artefakty OCR)
+
+---
 
 ## 🛠 Wymagania
-* [Docker](https://docs.docker.com/get-docker/)
-* [Docker Compose](https://docs.docker.com/compose/install/)
 
-## 🏃‍♂️ Jak uruchomić projekt lokalnie?
+- [Docker](https://docs.docker.com/get-docker/)
+- [Docker Compose](https://docs.docker.com/compose/install/)
 
-1. **Sklonuj repozytorium:**
-   ```bash
-   git clone <link-do-repo>
-   cd <nazwa-folderu>
-Skonfiguruj środowisko (opcjonalnie):
-Jeśli projekt wymaga zmiennych środowiskowych (np. kluczy API do OCR), skopiuj plik z przykładową konfiguracją:
+Do działania lokalnego (poza Dockerem) dodatkowo:
+- Python 3.11+
+- [Tesseract OCR](https://github.com/tesseract-ocr/tesseract) zainstalowany w systemie
+  - Windows: `C:\Program Files\Tesseract-OCR\tesseract.exe`
+  - Linux/macOS: `apt install tesseract-ocr` / `brew install tesseract`
+- Paczki językowe Tesseract: `eng`, `pol`
 
-Bash
-cp .env.example .env
-Uruchom kontenery:
+---
 
-Bash
+## 🚀 Uruchomienie przez Docker (zalecane)
+
+```bash
+git clone <link-do-repo>
+cd <nazwa-folderu>
 docker compose up -d --build
- Porty i Dostęp
-Gdy kontenery wstaną, serwis jest dostępny pod adresem:
-
-API url: http://localhost:8000 (Zmień port na właściwy, jeśli aplikacja używa innego)
-
-Jak używać API?
-Endpoint: POST /parser
-Wysyła plik z CV i zwraca jego zawartość przetworzoną na tekst/markdown. Obsługiwane formaty: .txt, .png, .jpg, .pdf.
-
-Przykład użycia (cURL):
-
-```
-curl -X POST http://localhost:8000/parser \
-  -H "Content-Type: multipart/form-data" \
-  -F "file=@/sciezka/do/twojego/pliku/cv_jan_kowalski.pdf"
 ```
 
-Przydatne komendy
+Serwis będzie dostępny pod: **http://localhost:8000**
 
-Zatrzymanie aplikacji:
-
-```
+Zatrzymanie:
+```bash
 docker compose down
 ```
 
-Podejrzenie logów parsera (przydatne przy debugowaniu wrzucanych plików):
-
-```
+Logi (przydatne przy debugowaniu):
+```bash
 docker compose logs -f
 ```
+
+---
+
+## 📡 API
+
+### `POST /parser`
+
+Przyjmuje jeden plik CV i zwraca jego zawartość jako tekst/markdown.
+
+**Obsługiwane formaty:** `.pdf`, `.txt`, `.jpg`, `.png`
+
+**Przykład (cURL):**
+```bash
+curl -X POST http://localhost:8000/parser \
+  -F "cv=@/sciezka/do/cv_jan_kowalski.pdf"
+```
+
+**Odpowiedź (200 OK):**
+```json
+{
+  "model": "pymupdf4llm",
+  "text": "# Jan Kowalski\n\n..."
+}
+```
+
+Pole `model` przyjmuje wartości: `pymupdf4llm` (standardowy parser) lub `tesseract` (OCR fallback).
+
+**Błąd — nieobsługiwany format (415):**
+```json
+{
+  "detail": "application/msword is not allowed, allowed types: PDF, TXT, JPG, PNG, DOCX"
+}
+```
+
+---
+
+## 📁 Struktura projektu
+
+```
+pdf_parser/
+├── main.py              # Endpoint FastAPI + logika routingu
+├── criterias.py         # Heurystyki detekcji skanów + czyszczenie tekstu
+├── check_types.py       # Walidacja MIME type pliku wejściowego
+├── tesseract_parser.py  # OCR przez Tesseract (PDF i obrazki)
+├── ollama_ocr.py        # (Eksperymentalny) OCR przez lokalny model Ollama
+├── requirements.txt     # Zależności Pythona
+├── Dockerfile
+└── docker-compose.yaml
+```
+
+---
+
+## ⚙️ Zmienne środowiskowe
+
+Projekt nie wymaga konfiguracji do basic usage. Jeśli chcesz zmienić port lub ustawienia CORS przed deployem produkcyjnym, edytuj `docker-compose.yaml` oraz `main.py` (sekcja `CORSMiddleware`).
