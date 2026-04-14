@@ -1,5 +1,8 @@
 import magic
+import logging
 from fastapi import HTTPException
+
+logger = logging.getLogger(__name__)
 
 DOZWOLONE_FORMATY = {
     'application/pdf': '.pdf',
@@ -12,7 +15,7 @@ DOZWOLONE_FORMATY = {
 def check_type(bytes):
     
     typ = magic.from_buffer(bytes, mime=True)
-    print(typ)
+    logger.debug("Detected MIME type: %s", typ)
     if typ not in DOZWOLONE_FORMATY:
 
         raise HTTPException(415, detail=f"{typ} is not allowed, allowed types: PDF, TXT, JPG, PNG, DOCX")

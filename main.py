@@ -1,5 +1,6 @@
 from fastapi import FastAPI, UploadFile, File, Request
 import tempfile
+import logging
 from check_types import check_type
 import pymupdf4llm
 import fitz
@@ -7,6 +8,8 @@ from tesseract_parser import get_text_tesseract
 from fastapi.middleware.cors import CORSMiddleware
 from criterias import delete_others_unicode, is_scanned_pdf
 import os
+
+logger = logging.getLogger(__name__)
 
 
 app = FastAPI()
@@ -54,7 +57,7 @@ async def main(cv: UploadFile = File(...)):
                     model_name = "tesseract"
                     clean_text = get_text_tesseract(path_file)
 
-            delete_others_unicode(clean_text)  # type: ignore
+            clean_text = delete_others_unicode(clean_text)  # type: ignore
 
         finally:
             os.unlink(path_file)
