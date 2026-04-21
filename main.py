@@ -35,7 +35,7 @@ async def main(cv: UploadFile = File(...)):
         raw_text = (await cv.read()).decode("utf-8")
         raw_text = delete_others_unicode(raw_text)
         cv_data = extract_cv_structure(raw_text)
-        return {"model": "llama3.2:3b", "cv": cv_data}
+        return {"model": "qwen3:4b", "cv": cv_data}
 
     # --- PDF / JPG / PNG: zapis do pliku tymczasowego ---
     # mkstemp zwraca (file_descriptor, path) — zamykamy fd od razu po zapisie,
@@ -47,7 +47,7 @@ async def main(cv: UploadFile = File(...)):
 
         # --- Obrazek: bezpośrednio GLM OCR ---
         if typ in (".jpg", ".jpeg", ".png"):
-            model_name = "glm-ocr + llama3.2:3b"
+            model_name = "glm-ocr + qwen3:4b"
             raw_text = get_text_ollama(path_file)
 
         # --- PDF ---
@@ -59,7 +59,7 @@ async def main(cv: UploadFile = File(...)):
 
             if is_scanned_pdf(md_text, page_count):
                 # Skan: renderuj każdą stronę do JPG → GLM OCR
-                model_name = "glm-ocr + llama3.2:3b"
+                model_name = "glm-ocr + qwen3:4b"
                 raw_text = ""
                 with fitz.open(path_file) as doc:
                     for i, page in enumerate(doc):
@@ -72,7 +72,7 @@ async def main(cv: UploadFile = File(...)):
                             os.unlink(page_jpg)
             else:
                 # Cyfrowy PDF: pymupdf4llm wystarczy
-                model_name = "pymupdf4llm + llama3.2:3b"
+                model_name = "pymupdf4llm + qwen3:4b"
                 raw_text = md_text
 
         raw_text = delete_others_unicode(raw_text)

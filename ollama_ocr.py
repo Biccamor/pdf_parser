@@ -3,7 +3,7 @@ Moduł OCR i strukturyzacji CV przez lokalne modele Ollama.
 
 Funkcje:
     get_text_ollama(image_path, model)  — OCR obrazka przez glm-ocr
-    extract_cv_structure(raw_text, model) — strukturyzacja tekstu do JSON CV przez llama3.2:3b
+    extract_cv_structure(raw_text, model) — strukturyzacja tekstu do JSON CV przez qwen3:4b
 """
 
 import json
@@ -11,15 +11,20 @@ import re
 from ollama import chat, ResponseError
 from fastapi import HTTPException
 from pydantic import BaseModel
+from typing import Optional, List
+
+class PersonInfo(BaseModel):
+    name: Optional[str] = None
+    email: Optional[str] = None
+    phone: Optional[str] = None
+    address: Optional[str] = None
 
 class CVData(BaseModel):
-    name: Optional[str]
-    email: Optional[str]
-    phone: Optional[str]
-    experience: List[str]
-    education: List[str]
-    skills: List[str]
-    extra: Optional[List[str]]
+    person_info: PersonInfo
+    education: List[str] = []
+    experience: List[str] = []
+    skills: List[str] = []
+    extra: Optional[str] = None  # w prompcie to string, nie List
 
 def get_text_ollama(image_path: str, model: str = "glm-ocr") -> str:
     """Wysyła obraz do lokalnego modelu Ollama i zwraca wyekstrahowany tekst."""
@@ -43,6 +48,7 @@ def get_text_ollama(image_path: str, model: str = "glm-ocr") -> str:
                     "images": [image_bytes],
                 }
             ],
+            options={"temperature": 0},
         )
     except (ResponseError, ConnectionError) as e:
         raise HTTPException(status_code=503, detail=f"Ollama unavailable ({model}): {e}")
@@ -50,7 +56,7 @@ def get_text_ollama(image_path: str, model: str = "glm-ocr") -> str:
     return response.message.content.strip()
 
 
-def extract_cv_structure(raw_text: str, model: str = "qwen3:4b") -> dict:
+def extract_cv_structure(raw_text: str, model: str = "qwen3:4b") -> CVData:
     """
     Wysyła surowy tekst CV do modelu językowego i zwraca ustrukturyzowany słownik.
 
@@ -99,7 +105,8 @@ CV TEXT:
         response = chat(
             model=model,
             messages=[{"role": "user", "content": prompt}],
-            format=CVData.model_json_schema()
+            format=CVData.model_json_schema(),
+            options={"temperature": 0},
         )
     except (ResponseError, ConnectionError) as e:
         raise HTTPException(status_code=503, detail=f"Ollama unavailable ({model}): {e}")
