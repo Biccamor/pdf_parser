@@ -8,28 +8,49 @@ Funkcje:
 
 import json
 import re
-from ollama import chat
+from ollama import chat, ResponseError
+from fastapi import HTTPException
+from pydantic import BaseModel
 
+class CVData(BaseModel):
+    name: Optional[str]
+    email: Optional[str]
+    phone: Optional[str]
+    experience: List[str]
+    education: List[str]
+    skills: List[str]
+    extra: Optional[List[str]]
 
 def get_text_ollama(image_path: str, model: str = "glm-ocr") -> str:
     """Wysyła obraz do lokalnego modelu Ollama i zwraca wyekstrahowany tekst."""
     with open(image_path, "rb") as f:
         image_bytes = f.read()
 
-    response = chat(
-        model=model,
-        messages=[
-            {
-                "role": "user",
-                "content": "Extract all text from this image. Return only the raw text, no commentary.",
-                "images": [image_bytes],
-            }
-        ],
-    )
+    prompt = f"""You extract ALL text from image, don't extract images or picture tags, everything should be in original language and return ONLY the raw text, no commentary. 
+    
+    RULES:
+    - Return ONLY the raw text — no markdown, no code blocks, no explanations.
+    - Keep values in their original language.
+    """
+
+    try:
+        response = chat(
+            model=model,
+            messages=[
+                {
+                    "role": "user",
+                    "content": prompt,
+                    "images": [image_bytes],
+                }
+            ],
+        )
+    except (ResponseError, ConnectionError) as e:
+        raise HTTPException(status_code=503, detail=f"Ollama unavailable ({model}): {e}")
+
     return response.message.content.strip()
 
 
-def extract_cv_structure(raw_text: str, model: str = "llama3.2:3b") -> dict:
+def extract_cv_structure(raw_text: str, model: str = "qwen3:4b") -> dict:
     """
     Wysyła surowy tekst CV do modelu językowego i zwraca ustrukturyzowany słownik.
 
@@ -65,10 +86,23 @@ Rules:
 CV TEXT:
 {raw_text}"""
 
-    response = chat(
-        model=model,
-        messages=[{"role": "user", "content": prompt}],
-    )
+    if not raw_text.strip():
+        return {
+            "person_info": {"name": None, "email": None, "phone": None, "address": None},
+            "education": [],
+            "experience": [],
+            "skills": [],
+            "extra": None,
+        }
+
+    try:
+        response = chat(
+            model=model,
+            messages=[{"role": "user", "content": prompt}],
+            format=CVData.model_json_schema()
+        )
+    except (ResponseError, ConnectionError) as e:
+        raise HTTPException(status_code=503, detail=f"Ollama unavailable ({model}): {e}")
 
     raw = response.message.content.strip()
 
@@ -77,4 +111,14 @@ CV TEXT:
     if match:
         raw = match.group(0)
 
-    return json.loads(raw)
+    try:
+        return json.loads(raw)
+    except json.JSONDecodeError:
+        # Fallback: zwroć surowy tekst w extra zamiast crashować
+        return {
+            "person_info": {"name": None, "email": None, "phone": None, "address": None},
+            "education": [],
+            "experience": [],
+            "skills": [],
+            "extra": raw,
+        }

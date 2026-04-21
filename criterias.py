@@ -29,19 +29,19 @@ def is_scanned_pdf(text: str, page_count: int) -> bool:
     """
     text_stripped = text.strip()
 
-    # 1. Mało tekstu na stronę (< 100 znaków na stronę = podejrzane)
+    #Mało tekstu na stronę
     if len(text_stripped) < page_count * 100:
         return True
 
-    # 2. Za dużo tagów obrazkowych relative do słów
+    #Za dużo tagów obrazkowych relative do słów
     if images(text_stripped):
         return True
 
-    # 3. Zniekształcone daty (symptom złego parsowania tabel/layoutu)
+    #Zniekształcone daty
     if years(text_stripped):
         return True
 
-    # 4. Ratio liter do wszystkich znaków (< 50% = śmieci / artefakty OCR)
+    # Ratio liter do wszystkich znaków < 50%
     alpha_ratio = sum(c.isalpha() for c in text_stripped) / max(len(text_stripped), 1)
     if alpha_ratio < 0.50:
         return True
