@@ -3,7 +3,7 @@ Moduł OCR i strukturyzacji CV przez lokalne modele Ollama.
 
 Funkcje:
     get_text_ollama(image_path, model)  — OCR obrazka przez glm-ocr
-    extract_cv_structure(raw_text, model) — strukturyzacja tekstu do JSON CV przez llama3.1
+    extract_cv_structure(raw_text, model) — strukturyzacja tekstu do JSON CV przez mistral:7b
 """
 
 from ollama import chat, ResponseError
@@ -82,25 +82,39 @@ RULES:
     return response.message.content.strip()
 
 
-def extract_cv_structure(raw_text: str, model: str = "llama3.1") -> dict:
+def extract_cv_structure(raw_text: str, model: str = "mistral:7b") -> dict:
     # Guard clause — przed budowaniem prompta
     if not raw_text.strip():
         return CVData().model_dump()
 
-    prompt = f"""You are a CV parser. Extract structured information from the CV text below.
+    system_prompt = """You are an expert CV/resume parser. Your task is to extract structured data from CV text.
+IMPORTANT: The input text may come from a PDF parser and sections can appear interleaved or out of order.
+You MUST identify content by its meaning, not just its position in the text.
+- Education entries: universities, colleges, schools, degrees (Bachelor, Master, PhD, etc.), field of study, graduation years.
+- Experience entries: job titles, company names, employment dates, work descriptions.
+- Skills: technical tools, programming languages, soft skills.
+- Extra: languages spoken, certificates, hobbies, awards, volunteering."""
+
+    prompt = f"""Extract all CV information from the text below. Sections may be mixed or out of order — identify them by content.
 RULES:
 - Keep all values in their original language.
-- Always include dates/years in experience and education entries if present.
+- Always include dates/years in experience and education entries.
 - Combine first and last name into a single 'name' field.
 - If a field has no data, return null for strings or [] for arrays.
-- NEVER invent, guess or fill in missing data — if unsure, return null.
+- NEVER invent or guess missing data.
+- Education includes: universities, colleges, degrees, exchange semesters, thesis projects.
+- Experience includes: jobs, internships, teaching assistant roles, part-time work.
+
 CV TEXT:
 {raw_text}"""
 
     try:
         response = chat(
             model=model,
-            messages=[{"role": "user", "content": prompt}],
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": prompt},
+            ],
             format=CVData.model_json_schema(),
             options={"temperature": 0},
         )
