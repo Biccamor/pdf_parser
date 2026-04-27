@@ -9,46 +9,24 @@ Funkcje:
 from ollama import chat, ResponseError
 from fastapi import HTTPException
 from pydantic import BaseModel, Field
-from typing import Optional, List
-
-class PersonInfo(BaseModel):
-    name: Optional[str] = Field(
-        None, 
-        description="Full name of the candidate. Combine first and last name. If not found, return null."
-    )
-    email: Optional[str] = Field(
-        None, 
-        description="Email address. If not found, return null."
-    )
-    phone: Optional[str] = Field(
-        None, 
-        description="Phone number. If not found, return null."
-    )
-    address: Optional[str] = Field(
-        None, 
-        description="Home address, city, or location. If not found, return null."
-    )
+from typing import List
 
 class CVData(BaseModel):
-    person_info: PersonInfo = Field(
-        default_factory=PersonInfo, 
-        description="Candidate's basic contact and personal information."
-    )
     education: List[str] = Field(
-        default_factory=list, 
-        description="List of educational institutions, degrees, and years of study. Keep original language. ALWAYS include dates if present. Example: ['Warsaw University - Computer Science (2015-2020)']."
+        default_factory=list,
+        description="List of educational institutions, degrees, and years of study. Keep original language. ALWAYS include dates if present. Example: ['Warsaw University - Computer Science (2015-2020)']. DO NOT include any personal names."
     )
     experience: List[str] = Field(
-        default_factory=list, 
-        description="Employment history. Keep original language. ALWAYS include dates, job title, and company name. Example: ['Senior Developer at Google (2020-2023)']."
+        default_factory=list,
+        description="Employment history. Keep original language. ALWAYS include dates, job title, and company name. Example: ['Senior Developer at Google (2020-2023)']. DO NOT include any personal names or contact details."
     )
     skills: List[str] = Field(
-        default_factory=list, 
+        default_factory=list,
         description="List of hard and soft skills. If they are in categories keep category names too and order them as they are in the CV. Keep concise. Example: ['Python', 'SQL', 'Time management']."
     )
     extra: List[str] = Field(
-        default_factory=list, 
-        description="Additional information: foreign languages, driver's license, certificates, hobbies. If none found in CV, return an empty list []."
+        default_factory=list,
+        description="Additional information: foreign languages, driver's license, certificates, hobbies. If none found in CV, return an empty list []. DO NOT include any personal names or contact details."
     )
 
 
@@ -62,7 +40,8 @@ RULES:
 - Return ONLY the raw extracted text — no markdown, no code blocks, no explanations.
 - Preserve the original reading order and line breaks.
 - Keep all values in their original language.
-- Skip any embedded images, icons, logos, or decorative elements."""
+- Skip any embedded images, icons, logos, or decorative elements.
+- CRITICAL: REMOVE all personal data before returning: full names, first names, last names, email addresses, phone numbers, home addresses, national ID numbers (e.g. PESEL), dates of birth, LinkedIn URLs, GitHub URLs, personal websites, or any other identifying information. Replace them with empty string or skip the line entirely."""
 
     try:
         response = chat(
@@ -93,17 +72,30 @@ You MUST identify content by its meaning, not just its position in the text.
 - Education entries: universities, colleges, schools, degrees (Bachelor, Master, PhD, etc.), field of study, graduation years.
 - Experience entries: job titles, company names, employment dates, work descriptions.
 - Skills: technical tools, programming languages, soft skills.
-- Extra: languages spoken, certificates, hobbies, awards, volunteering."""
+- Extra: languages spoken, certificates, hobbies, awards, volunteering.
+
+CRITICAL PRIVACY RULE — ABSOLUTE PROHIBITION:
+You MUST NOT include ANY personal data in your output under any circumstances.
+This includes but is not limited to:
+  - Full names, first names, last names, initials
+  - Email addresses
+  - Phone numbers (mobile, landline, fax)
+  - Home addresses, postal codes, cities of residence
+  - National ID numbers (PESEL, SSN, passport number, etc.)
+  - Dates of birth or age
+  - Profile URLs (LinkedIn, GitHub, personal website, portfolio)
+  - Any other identifying information
+If any of the above appear in the source text, SKIP them entirely. Do not copy them into any field."""
 
     prompt = f"""Extract all CV information from the text below. Sections may be mixed or out of order — identify them by content.
 RULES:
 - Keep all values in their original language.
 - Always include dates/years in experience and education entries.
-- Combine first and last name into a single 'name' field.
-- If a field has no data, return null for strings or [] for arrays.
+- If a field has no data, return [] for arrays.
 - NEVER invent or guess missing data.
 - Education includes: universities, colleges, degrees, exchange semesters, thesis projects.
 - Experience includes: jobs, internships, teaching assistant roles, part-time work.
+- ABSOLUTE RULE: Do NOT copy any personal data into the output (names, emails, phones, addresses, IDs, URLs, date of birth). Skip them completely.
 
 CV TEXT:
 {raw_text}"""

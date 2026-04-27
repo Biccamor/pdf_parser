@@ -9,7 +9,7 @@ def images(text: str):
     picture_tags = text.count("picture [") # check if there are too many images compared to text if so then it is badly foramted
     words = len(text.split())
     
-    if words > 0 and (picture_tags / words) > 0.02: 
+    if words > 0 and (picture_tags / words) > 0.1: 
         return True
     return False
 
