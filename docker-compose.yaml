@@ -1,11 +1,22 @@
 services:
-  parser:  
+  parser:
     build: .
     ports:
-      - "8000:8000"
+      - "8010:8000" # EXPOSE 8010 ale port 8000 — ujednól
     volumes:
       - .:/parser
-      - parser:/root/.cache
+    environment:
+      - OLLAMA_HOST=http://ollama:11434
     command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+    depends_on:
+      - ollama
+
+  ollama:
+    image: ollama/ollama
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_models:/root/.ollama # modele persystują między restartami
+
 volumes:
-  parser:
+  ollama_models:
