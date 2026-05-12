@@ -46,7 +46,7 @@ CV TEXT:
 {raw_text}"""
 
 
-def extract_cv_structure(raw_text: str, model: str = "qwen3.6-35b-a3b") -> dict:
+def extract_cv_structure(raw_text: str, model: str = "qwen3.6:35b-a3b") -> dict:
     """Strukturyzuje surowy tekst CV do słownika zgodnego z CVData. Nie zwraca żadnych danych osobowych."""
     if not raw_text.strip():
         return CVData().model_dump()
