@@ -38,14 +38,14 @@ async def parse_cv(cv: UploadFile = File(...)):
     if header != b"%PDF":
         raise HTTPException(status_code=400, detail="Only PDF files are accepted.")
     await cv.seek(0)
-
+    
     fd, path_file = tempfile.mkstemp(suffix=".pdf")
     try:
         with os.fdopen(fd, "wb") as f:
             f.write(await cv.read())
 
         md_text = pymupdf4llm.to_markdown(path_file)
-        md_text = clean_cv_markdown(md_text)
+        md_text = clean_cv_markdown(md_text) # type: ignore
 
         with fitz.open(path_file) as doc:
             page_count = len(doc)
@@ -55,7 +55,7 @@ async def parse_cv(cv: UploadFile = File(...)):
             model_name = "glm-ocr + qwen3.6:35b-a3b"
             raw_text = ""
             with fitz.open(path_file) as doc:
-                for i, page in enumerate(doc):
+                for i, page in enumerate(doc): #type: ignore
                     pix = page.get_pixmap(dpi=300, alpha=False)
                     page_jpg = f"{path_file}_page_{i}.jpg"
                     pix.save(page_jpg)
