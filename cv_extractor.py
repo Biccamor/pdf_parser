@@ -7,21 +7,18 @@ Funkcje:
 
 import logging
 
-from ollama import chat, ResponseError
+from ollama import chat, ResponseError, AsyncClient
 from fastapi import HTTPException
 
 from cv_schema import CVData
-from prompt import _SYSTEM_PROMPT
+from prompt import _SYSTEM_PROMPT, _USER_PROMPT_TEMPLATE
 
 logger = logging.getLogger(__name__)
 
-_USER_PROMPT_TEMPLATE = """Parse this CV into structured JSON. Classify ALL work/job entries into "experience" — do not leave it empty if the CV describes employment. Put the degree type (BSc, MSc, PhD, etc.) into "degree", NOT into "notes". Merge all skill/tech sections into "skills". Everything else goes into "extras" with fitting category names. Remove personal contact data entirely.
-
-CV TEXT:
-{raw_text}"""
 
 
-def extract_cv_structure(raw_text: str, model: str = "qwen3:4b") -> dict:
+
+async def extract_cv_structure(raw_text: str, model: str = "qwen3.6:35b-a3b") -> dict:
     """Strukturyzuje surowy tekst CV do słownika zgodnego z CVData. Nie zwraca żadnych danych osobowych."""
     if not raw_text.strip():
         return CVData().model_dump()
@@ -29,7 +26,7 @@ def extract_cv_structure(raw_text: str, model: str = "qwen3:4b") -> dict:
     prompt = _USER_PROMPT_TEMPLATE.format(raw_text=raw_text)
 
     try:
-        response = chat(
+        response = await AsyncClient().chat(
             model=model,
             messages=[
                 {"role": "system", "content": _SYSTEM_PROMPT},

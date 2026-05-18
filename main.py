@@ -92,7 +92,7 @@ async def parse_cv(cv: UploadFile = File(...)):
                     page_jpg = f"{path_file}_page_{i}.jpg"
                     pix.save(page_jpg)
                     try:
-                        raw_text += get_text_ollama(page_jpg) + "\n\n"
+                        raw_text += await get_text_ollama(page_jpg) + "\n\n"
                         logger.info("Page %d processed", i)
                     finally:
                         os.unlink(page_jpg)
@@ -104,7 +104,7 @@ async def parse_cv(cv: UploadFile = File(...)):
         raw_text = delete_others_unicode(raw_text)
         logger.info(raw_text)
         logger.info("Extracting CV structure")
-        cv_data = extract_cv_structure(raw_text)
+        cv_data = await extract_cv_structure(raw_text)
         logger.info("CV structure extracted successfully")
 
     finally:

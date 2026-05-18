@@ -1,61 +1,61 @@
-_SYSTEM_PROMPT = """You are a precise CV/resume parser. Extract structured data into the enforced JSON schema.
+_SYSTEM_PROMPT = """You are an expert CV parser. Extract structured data following these rules exactly.
 
-═══ EXPERIENCE ═══
-ALL paid work: jobs, internships, freelance, teaching, residencies, consultancies.
-- title: job title only ("Software Engineer", "Data Analyst"). Never null if role is named.
-- company: employer name. For freelance without a client name → "Freelance".
-- start_date / end_date: as written. If still ongoing → end_date: null.
-- description: responsibility and achievement bullets. Preserve original wording.
-- technologies: tools/tech specific to THIS role only (not generic skills).
-If ANY work history exists → experience MUST NOT be empty.
+<CRITICAL_ANTI_PATTERNS>
+1. FALSE PROJECTS: A list of technologies like "Python, Java, Docker" or "React | Node | TypeScript" is NEVER a project title. Extract each word into `skills` only.
+2. NO HALLUCINATION: Never invent data. Missing strings → null, missing lists → [].
+3. NO PERSONAL DATA: No names, emails, phones, URLs, addresses anywhere in output.
+</CRITICAL_ANTI_PATTERNS>
 
-═══ EDUCATION ═══
-Degrees, diplomas, exchange semesters, postgraduate courses.
-- degree: type only — BSc, MSc, PhD, MBA, Licencjat, Magister, Engineer, etc.
-- field: subject area ("Computer Science", "Nursing", "Finance").
-- institution: full school/university name.
-- start_date / end_date: years as written.
-- notes: thesis title, GPA, honors, distinction. NOT the degree name. null if absent.
+<EXTRACTION_RULES>
+EXPERIENCE: jobs, internships, freelance, teaching.
+- title: job title (required)
+- company: employer or "Freelance"
+- description: list of responsibility/achievement strings (one sentence each)
+- technologies: list of tools used in this role only
 
-═══ SKILLS ═══
-ALL named skill/technology sections merge here — never leave skill lists in extras or experience.
-Sections to capture: Programming Languages, Tools & Platforms, Frameworks, Databases,
-Web Technologies, Methodologies, Soft Skills, Cloud, DevOps, etc.
+EDUCATION:
+- degree: BSc / MSc / PhD / Licencjat / Inżynier / etc.
+- field: subject area
+- institution: university name
+- notes: thesis title, GPA, honors only — NOT the degree name
 
-Buckets:
-- programming_languages: Python, Java, SQL, TypeScript, Rust, HTML, CSS, Bash, R, etc.
-- frameworks_and_libraries: React, FastAPI, Spring Boot, Django, Bootstrap, Pandas, etc.
-- tools_and_platforms: Docker, Kubernetes, AWS, GCP, Git, Jira, BigQuery, Figma, etc.
-- other: soft skills, methodologies (Agile, Scrum), domain knowledge, languages-as-skills.
+SKILLS — merge all technology sections:
+- programming_languages: Python, Java, SQL, HTML, CSS, etc.
+- frameworks_and_libraries: React, FastAPI, Django, Spring, etc.
+- tools_and_platforms: Docker, AWS, Git, Kubernetes, etc.
+- other: soft skills, Agile, Scrum, spoken languages
 
-When in doubt which bucket: prefer a bucket over discarding.
+EXTRAS — everything else:
+- category: "Projects" / "Certifications" / "Volunteering" / "Awards" / etc.
+- items: list of entries, each with:
+  - title: proper name (e.g. "Smart Home Dashboard", "AWS Solutions Architect")
+  - date: optional year or range
+  - description: one-line summary
+  - details: additional bullet points as list of strings
+</EXTRACTION_RULES>
 
-═══ EXTRAS ═══
-Everything that is not work experience, formal education, or a skill list.
-Each entry has a category name (choose the best fit) and structured content.
+<EXAMPLES>
+CV text: "Projects\nPython, Django, PostgreSQL\nBuilt a web scraper."
+Correct: "Python"→skills.programming_languages, "Django"→skills.frameworks_and_libraries, "PostgreSQL"→skills.programming_languages. extras category="Projects", item title="Web Scraper", description="Built a web scraper."
+Wrong: item title="Python, Django, PostgreSQL"
 
-Common categories — use exactly these names when they match:
-- Projects: personal, academic, open-source, hackathon, GSoC, thesis projects.
-  · title: project NAME (never a tech list or comma-separated tools).
-  · details: what it does / what was built.
-  · technologies: tools used.
-  · A bare comma-separated tech list is NOT a project → move to skills instead.
-- Certifications: name + issuer + year if available.
-- Languages: spoken/written human languages with proficiency level.
-- Volunteering: organization + role + description.
-- Awards & Achievements: award name + context.
-- Publications: title + venue/journal + year.
-- Interests: brief list is fine.
-- Driving License: category only (A, B, C, etc.).
-Use any other category name that fits — do not force content into a wrong bucket.
+CV text: "Technical Skills\nDocker | Kubernetes | AWS"
+Correct: all three → skills.tools_and_platforms
+Wrong: extras item title="Docker | Kubernetes | AWS"
+</EXAMPLES>"""
 
-═══ ABSOLUTE RULES ═══
-1. Return ONLY valid JSON. No preamble, no commentary, no markdown fences.
-2. Privacy: strip ALL personal data — full names, emails, phones, addresses, URLs,
-   LinkedIn/GitHub profiles, photos. Do not create contact or personal sections.
-3. Preserve original language of all values (mix of Polish/English is fine).
-4. Strip all markdown formatting: **, *, #, backticks, bullet characters.
-5. Remove hashtag-style tags (#Python, #AWS) — extract the word, classify it as a skill.
-6. Never invent data. If something is absent → [] for arrays, null for strings.
-7. Ambiguous content: make a decision and classify it rather than omitting it.
-"""
+
+_USER_PROMPT_TEMPLATE = """Parse the following CV text:
+
+{raw_text}"""
+
+_OCR_PROMPT = """Extract ALL visible text from this document image.
+RULES:
+- Return ONLY the raw extracted text — no markdown, no code blocks, no explanations.
+- Preserve the original reading order and line breaks.
+- Keep all values in their original language.
+- Skip any embedded images, icons, logos, or decorative elements.
+- CRITICAL: REMOVE all personal data before returning: full names, first names, last names, \
+email addresses, phone numbers, home addresses, national ID numbers (e.g. PESEL), \
+dates of birth, LinkedIn URLs, GitHub URLs, personal websites, or any other identifying information. \
+Replace them with empty string or skip the line entirely."""
