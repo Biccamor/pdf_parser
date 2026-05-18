@@ -5,29 +5,17 @@ Funkcje:
     get_text_ollama(image_path, model) — zwraca surowy tekst z obrazu, bez danych osobowych.
 """
 
-from ollama import chat, ResponseError
+from ollama import chat, ResponseError, AsyncClient
 from fastapi import HTTPException
+from prompt import _OCR_PROMPT
 
-
-_OCR_PROMPT = """Extract ALL visible text from this document image.
-RULES:
-- Return ONLY the raw extracted text — no markdown, no code blocks, no explanations.
-- Preserve the original reading order and line breaks.
-- Keep all values in their original language.
-- Skip any embedded images, icons, logos, or decorative elements.
-- CRITICAL: REMOVE all personal data before returning: full names, first names, last names, \
-email addresses, phone numbers, home addresses, national ID numbers (e.g. PESEL), \
-dates of birth, LinkedIn URLs, GitHub URLs, personal websites, or any other identifying information. \
-Replace them with empty string or skip the line entirely."""
-
-
-def get_text_ollama(image_path: str, model: str = "glm-ocr:latest") -> str:
+async def get_text_ollama(image_path: str, model: str = "glm-ocr:latest") -> str:
     """Wysyła obraz do lokalnego modelu Ollama i zwraca wyekstrahowany tekst bez danych osobowych."""
     with open(image_path, "rb") as f:
         image_bytes = f.read()
 
     try:
-        response = chat(
+        response = await AsyncClient().chat(
             model=model,
             messages=[
                 {

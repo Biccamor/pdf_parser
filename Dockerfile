@@ -1,4 +1,5 @@
 FROM python:3.11-slim
+ENV PYTHONBUFFERED=1
 
 RUN apt-get update && apt-get install -y \
     libgl1 \
@@ -15,4 +16,4 @@ COPY . .
 
 EXPOSE 8010
 
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8010"]
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8010", "--timeout-keep-alive", "300"]

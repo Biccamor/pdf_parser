@@ -49,3 +49,35 @@ class TestCleanCvMarkdown:
     def test_nested_bold_in_header(self):
         """Header z gwiazdkami bold powinien być wyczyszczony."""
         assert clean_cv_markdown("#### **Extra**") == "Extra"
+
+    def test_removes_bold_from_body(self):
+        """Bold w treści body powinien być usunięty."""
+        assert clean_cv_markdown("Used **Python** and **Docker**") == "Used Python and Docker"
+
+    def test_removes_italic_from_body(self):
+        """Italic w treści body powinien być usunięty."""
+        assert clean_cv_markdown("Used *Python* and *Docker*") == "Used Python and Docker"
+
+    def test_removes_bold_tech_stack(self):
+        """Typowy bold tech stack z CV PDF."""
+        text = "**Scala | Swift | Lab Study | Pattern Detection**"
+        expected = "Scala | Swift | Lab Study | Pattern Detection"
+        assert clean_cv_markdown(text) == expected
+
+    def test_removes_hashtag_tags(self):
+        """Hashtag-tagi na końcu linii powinny być usunięte."""
+        text = "Migrating to Scala 3 #Scala #Migration #Scala3"
+        expected = "Migrating to Scala 3"
+        assert clean_cv_markdown(text) == expected
+
+    def test_preserves_text_without_hashtags(self):
+        """Tekst bez hashtagów nie powinien być zmieniony."""
+        text = "Built e-commerce platforms for 5+ clients"
+        assert clean_cv_markdown(text) == text
+
+    def test_hashtag_multiline(self):
+        """Hashtagi usuwane z każdej linii osobno."""
+        text = "Article about Scala #Scala #FP\nAnother post #Java"
+        expected = "Article about Scala\nAnother post"
+        assert clean_cv_markdown(text) == expected
+
