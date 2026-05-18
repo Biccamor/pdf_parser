@@ -31,10 +31,41 @@ class TestExtractCvStructure:
     def test_valid_response_returns_parsed_data(self, mock_chat):
         """Poprawna odpowiedź JSON → zwraca sparsowane dane CV."""
         cv_json = json.dumps({
-            "education": ["Warsaw University - CS (2018-2023)"],
-            "experience": ["Dev at Google (2023-2024)"],
-            "skills": ["Python", "Docker"],
-            "extra": ["English B2"],
+            "education": [
+                {
+                    "degree": "BSc",
+                    "field": "Computer Science",
+                    "institution": "Warsaw University of Technology",
+                    "start": "2018",
+                    "end": "2023",
+                    "notes": None,
+                }
+            ],
+            "experience": [
+                {
+                    "title": "Developer",
+                    "company": "Google",
+                    "start": "2023",
+                    "end": "2024",
+                    "location": None,
+                    "description": ["Built microservices"],
+                    "technologies": ["Python", "Docker"],
+                }
+            ],
+            "skills": {
+                "programming_languages": ["Python"],
+                "frameworks_and_libraries": [],
+                "tools_and_platforms": ["Docker"],
+                "other": [],
+            },
+            "extras": [
+                {
+                    "category": "Languages",
+                    "items": [
+                        {"title": "English", "date": None, "description": "B2", "details": []}
+                    ],
+                }
+            ],
         })
         mock_response = MagicMock()
         mock_response.message.content = cv_json
@@ -42,10 +73,13 @@ class TestExtractCvStructure:
 
         result = extract_cv_structure("some cv text")
 
-        assert result["education"] == ["Warsaw University - CS (2018-2023)"]
-        assert result["experience"] == ["Dev at Google (2023-2024)"]
-        assert result["skills"] == ["Python", "Docker"]
-        assert result["extra"] == ["English B2"]
+        assert len(result["education"]) == 1
+        assert result["education"][0]["institution"] == "Warsaw University of Technology"
+        assert len(result["experience"]) == 1
+        assert result["experience"][0]["company"] == "Google"
+        assert result["skills"]["programming_languages"] == ["Python"]
+        assert len(result["extras"]) == 1
+        assert result["extras"][0]["category"] == "Languages"
 
     @patch("cv_extractor.chat")
     def test_invalid_json_returns_default(self, mock_chat):
@@ -62,10 +96,24 @@ class TestExtractCvStructure:
     def test_partial_json_fills_defaults(self, mock_chat):
         """Częściowy JSON (brakujące pola) → pola domyślne uzupełnione."""
         cv_json = json.dumps({
-            "education": ["MIT (2020)"],
+            "education": [
+                {
+                    "degree": "MSc",
+                    "field": None,
+                    "institution": "MIT",
+                    "start": "2020",
+                    "end": None,
+                    "notes": None,
+                }
+            ],
             "experience": [],
-            "skills": [],
-            "extra": [],
+            "skills": {
+                "programming_languages": [],
+                "frameworks_and_libraries": [],
+                "tools_and_platforms": [],
+                "other": [],
+            },
+            "extras": [],
         })
         mock_response = MagicMock()
         mock_response.message.content = cv_json
@@ -73,10 +121,10 @@ class TestExtractCvStructure:
 
         result = extract_cv_structure("cv text")
 
-        assert result["education"] == ["MIT (2020)"]
+        assert len(result["education"]) == 1
+        assert result["education"][0]["institution"] == "MIT"
         assert result["experience"] == []
-        assert result["skills"] == []
-        assert result["extra"] == []
+        assert result["extras"] == []
 
     @patch("cv_extractor.chat")
     def test_response_error_raises_503(self, mock_chat):
@@ -113,7 +161,7 @@ class TestExtractCvStructure:
 
     @patch("cv_extractor.chat")
     def test_uses_default_model(self, mock_chat):
-        """Domyślny model to qwen3.6-35b-a3b."""
+        """Domyślny model to mellum7b."""
         mock_response = MagicMock()
         mock_response.message.content = json.dumps(CVData().model_dump())
         mock_chat.return_value = mock_response
@@ -122,7 +170,7 @@ class TestExtractCvStructure:
 
         call_args = mock_chat.call_args
         model = call_args.kwargs.get("model") or call_args[1].get("model")
-        assert model == "qwen3.6-35b-a3b"
+        assert model == "mellum7b"
 
     @patch("cv_extractor.chat")
     def test_uses_json_schema_format(self, mock_chat):
@@ -136,3 +184,52 @@ class TestExtractCvStructure:
         call_args = mock_chat.call_args
         fmt = call_args.kwargs.get("format") or call_args[1].get("format")
         assert fmt == CVData.model_json_schema()
+
+    @patch("cv_extractor.chat")
+    def test_extras_multiple_categories(self, mock_chat):
+        """Extras z wieloma kategoriami są poprawnie parsowane."""
+        cv_json = json.dumps({
+            "experience": [],
+            "education": [],
+            "skills": {
+                "programming_languages": [],
+                "frameworks_and_libraries": [],
+                "tools_and_platforms": [],
+                "other": [],
+            },
+            "extras": [
+                {
+                    "category": "Certifications",
+                    "items": [
+                        {"title": "AWS Solutions Architect", "date": "2023", "description": "Amazon", "details": []}
+                    ],
+                },
+                {
+                    "category": "Volunteering",
+                    "items": [
+                        {"title": "Mentor", "date": "2020", "description": "CoderDojo", "details": ["Teaching kids programming"]}
+                    ],
+                },
+                {
+                    "category": "Interests",
+                    "items": [
+                        {"title": "Chess", "date": None, "description": None, "details": []},
+                        {"title": "Rock climbing", "date": None, "description": None, "details": []},
+                    ],
+                },
+            ],
+        })
+        mock_response = MagicMock()
+        mock_response.message.content = cv_json
+        mock_chat.return_value = mock_response
+
+        result = extract_cv_structure("cv with extras")
+
+        assert len(result["extras"]) == 3
+        categories = [e["category"] for e in result["extras"]]
+        assert "Certifications" in categories
+        assert "Volunteering" in categories
+        assert "Interests" in categories
+        # Check nested items
+        volunteering = next(e for e in result["extras"] if e["category"] == "Volunteering")
+        assert volunteering["items"][0]["details"] == ["Teaching kids programming"]
