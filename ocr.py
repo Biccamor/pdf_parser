@@ -24,7 +24,7 @@ async def get_text_ollama(image_path: str, model: str = "glm-ocr:latest") -> str
                     "images": [image_bytes],
                 }
             ],
-            options={"temperature": 0},
+            options={"temperature": 0, "num_ctx": 8192},
         )
     except (ResponseError, ConnectionError) as e:
         raise HTTPException(status_code=503, detail=f"Ollama unavailable ({model}): {e}")
