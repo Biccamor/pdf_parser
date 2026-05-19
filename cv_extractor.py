@@ -33,7 +33,7 @@ async def extract_cv_structure(raw_text: str, model: str = "gemma4:latest") -> d
                 {"role": "user", "content": prompt},
             ],
             format=CVData.model_json_schema(),
-            options={"temperature": 0, "num_ctx": 12288},
+            options={"temperature": 0, "num_ctx": 16384},
         )
     except (ResponseError, ConnectionError) as e:
         raise HTTPException(status_code=503, detail=f"Ollama unavailable ({model}): {e}")

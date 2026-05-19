@@ -1,16 +1,16 @@
+# -*- coding: utf-8 -*-
 import re
 import tempfile
 import logging
 import os
+import asyncio
 
 import fitz
-import pymupdf4llm
 from fastapi import FastAPI, UploadFile, File, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
-from ocr import get_text_ollama
-from cv_extractor import extract_cv_structure
-from criterias import delete_others_unicode, is_scanned_pdf
+from vision_extractor import extract_cv_with_vision, merge_cv_data
+from criterias import delete_others_unicode
 import sys
 
 logging.basicConfig(level=logging.INFO, handlers=[logging.StreamHandler(sys.stdout)])
@@ -20,49 +20,13 @@ app = FastAPI()
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # TODO: zmienic przed deployem
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
     max_age=600,
 )
 
-
-def clean_cv_markdown(text: str) -> str:
-    # --- istniejące ---
-    text = re.sub(r'`([^`]+)`', r'\1', text)
-    text = re.sub(r'#{1,6}\s+\*{0,2}(.*?)\*{0,2}\s*$', r'\1', text, flags=re.MULTILINE)
-    text = re.sub(r'(?:\s+#\S+)+\s*$', '', text, flags=re.MULTILINE)
-    text = re.sub(r'\*\*(.+?)\*\*', r'\1', text)
-    text = re.sub(r'\*(.+?)\*', r'\1', text)
-
-    # --- nowe ---
-    # Usuń pozostałe samotne backticki
-    text = re.sub(r'`+', '', text)
-    # Zamień // na przecinek (separator lokalizacji z PDF)
-    text = re.sub(r'\s*//\s*', ', ', text)
-    # Usuń pierwsze 3-5 linii jeśli to nagłówek strony (email, URL, miasto)
-    lines = text.split('\n')
-    skip = 0
-    for line in lines[:6]:
-        stripped = line.strip()
-        if re.match(r'^[\w.+-]+@[\w.-]+\.\w+$', stripped):  # email
-            skip += 1
-        elif re.match(r'^https?://', stripped):               # URL
-            skip += 1
-        elif re.match(r'^[\w.-]+\.(net|com|pl|io|dev)$', stripped):  # domena
-            skip += 1
-        elif re.match(r'^[A-Za-z\s,]+,\s+[A-Za-z\s]+$', stripped) and len(stripped) < 40:  # "Vancouver, Canada"
-            skip += 1
-        else:
-            break
-    text = '\n'.join(lines[skip:])
-    # Maksymalnie dwie newliny z rzędu
-    text = re.sub(r'\n{3,}', '\n\n', text)
-    # Wielokrotne spacje
-    text = re.sub(r'[ \t]{2,}', ' ', text)
-
-    return text.strip()
 
 @app.post("/parser")
 async def parse_cv(cv: UploadFile = File(...)):
@@ -76,38 +40,33 @@ async def parse_cv(cv: UploadFile = File(...)):
         with os.fdopen(fd, "wb") as f:
             f.write(await cv.read())
 
-        md_text = pymupdf4llm.to_markdown(path_file)
-        md_text = clean_cv_markdown(md_text) # type: ignore
-
         with fitz.open(path_file) as doc:
             page_count = len(doc)
-
-        if is_scanned_pdf(md_text, page_count):
-            logger.info("Scanned PDF detected — processing with GLM OCR")
-            model_name = "glm-ocr + gemma4"
-            raw_text = ""
-            with fitz.open(path_file) as doc:
-                for i, page in enumerate(doc): #type: ignore
-                    pix = page.get_pixmap(dpi=300, alpha=False)
-                    page_jpg = f"{path_file}_page_{i}.jpg"
-                    pix.save(page_jpg)
-                    try:
-                        raw_text += await get_text_ollama(page_jpg) + "\n\n"
-                        logger.info("Page %d processed", i)
-                    finally:
-                        os.unlink(page_jpg)
-        else:
-            logger.info("Digital PDF detected — processing with pymupdf4llm")
-            model_name = "pymupdf4llm + gemma4"
-            raw_text = md_text
-
-        raw_text = delete_others_unicode(raw_text)
-        logger.info(raw_text)
-        logger.info("Extracting CV structure")
-        cv_data = await extract_cv_structure(raw_text)
+            
+        logger.info(f"Processing PDF with {page_count} page(s) using Qwen2.5-VL")
+        
+        cv_pages = []
+        with fitz.open(path_file) as doc:
+            for i, page in enumerate(doc):
+                pix = page.get_pixmap(dpi=300, alpha=False)
+                page_jpg = f"{path_file}_page_{i}.jpg"
+                pix.save(page_jpg)
+                
+                try:
+                    logger.info(f"Processing page {i + 1}/{page_count}")
+                    page_data = await extract_cv_with_vision(page_jpg)
+                    cv_pages.append(page_data)
+                    logger.info(f"Page {i + 1} processed successfully")
+                except Exception as e:
+                    logger.error(f"Error processing page {i + 1}: {e}")
+                finally:
+                    os.unlink(page_jpg)
+        
+        logger.info("Merging data from all pages")
+        cv_data = await merge_cv_data(cv_pages)
         logger.info("CV structure extracted successfully")
 
     finally:
         os.unlink(path_file)
 
-    return {"model": model_name, "cv": cv_data}
+    return {"model": "qwen2.5-vl-7b", "cv": cv_data}
