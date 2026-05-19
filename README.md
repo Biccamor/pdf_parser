@@ -1,62 +1,64 @@
 # PDF Parser — CV Extractor
 
-Mikroserwis FastAPI do ekstrakcji tekstu z plików CV. Obsługuje PDF, TXT, JPG i PNG. Automatycznie wykrywa zeskanowane (image-based) PDF-y i przełącza się na OCR przez Tesseract.
+Mikroserwis FastAPI do ekstrakcji strukturyzowanych danych z plików CV. Używa **Qwen2.5-VL 7B** (multimodal vision-language model) do konwersji PDF → zdjęcia → JSON z cv_schema.
 
 ---
 
 ## 📐 Architektura
 
 ```
-Plik wejściowy
-    │
-    ├─ TXT ──────────────────────── zwróć jako tekst
-    ├─ JPG / PNG ────────────────── Tesseract OCR
-    └─ PDF ──── pymupdf4llm ──► sprawdź jakość tekstu
-                                    │
-                                    ├─ OK ──────────── zwróć markdown
-                                    └─ SKAN ─────────── Tesseract OCR
+PDF
+  │
+  ├─ Konwersja na zdjęcia (300 DPI)
+  │
+  ├─ Qwen2.5-VL (per stronę)
+  │   ├─ Vision analysis
+  │   └─ Extrakacja struktury CV → JSON
+  │
+  └─ Scalenie danych (merge_cv_data)
+      └─ Usunięcie duplikatów
+      └─ Ustrukturyzowany JSON (CVData)
 ```
-
-Heurystyki wykrywania skanu (`is_scanned_pdf`):
-- < 100 znaków na stronę
-- zbyt wysoki stosunek tagów obrazkowych do słów
-- 3+ kolejne lata z rzędu (artefakt złego parsowania tabel)
-- < 50% znaków alfabetycznych (śmieci / artefakty OCR)
 
 ---
 
 ## 🛠 Wymagania
 
-- [Docker](https://docs.docker.com/get-docker/)
-- [Docker Compose](https://docs.docker.com/compose/install/)
-
-Do działania lokalnego (poza Dockerem) dodatkowo:
 - Python 3.11+
-- [Tesseract OCR](https://github.com/tesseract-ocr/tesseract) zainstalowany w systemie
-  - Windows: `C:\Program Files\Tesseract-OCR\tesseract.exe`
-  - Linux/macOS: `apt install tesseract-ocr` / `brew install tesseract`
-- Paczki językowe Tesseract: `eng`, `pol`
+- [Ollama](https://ollama.ai/) z zainstalowanym **qwen2.5-vl-7b**
+- Paczki z `requirements.txt`
+
+### Setup Ollama (lokalnie)
+
+```bash
+# Zainstaluj Ollama
+ollama pull qwen2.5-vl-7b
+
+# Uruchom serwer (default: http://localhost:11434)
+ollama serve
+```
 
 ---
 
-## 🚀 Uruchomienie przez Docker (zalecane)
+## 🚀 Uruchomienie
+
+### Lokalnie (bez Docker)
 
 ```bash
-git clone <link-do-repo>
-cd <nazwa-folderu>
-docker compose up -d --build
+# Zainstaluj zależności
+pip install -r requirements.txt
+
+# Uruchom FastAPI
+uvicorn main:app --reload
 ```
 
 Serwis będzie dostępny pod: **http://localhost:8000**
 
-Zatrzymanie:
-```bash
-docker compose down
-```
+### Docker (jeśli potrzebujesz)
 
-Logi (przydatne przy debugowaniu):
 ```bash
-docker compose logs -f
+# Build i uruchomienie
+docker compose up -d --build
 ```
 
 ---
@@ -65,30 +67,45 @@ docker compose logs -f
 
 ### `POST /parser`
 
-Przyjmuje jeden plik CV i zwraca jego zawartość jako tekst/markdown.
+Przyjmuje plik CV (PDF) i zwraca strukturyzowane dane.
 
-**Obsługiwane formaty:** `.pdf`, `.txt`, `.jpg`, `.png`
+**Obsługiwane formaty:** `.pdf`
 
 **Przykład (cURL):**
 ```bash
 curl -X POST http://localhost:8000/parser \
-  -F "cv=@/sciezka/do/cv_jan_kowalski.pdf"
+  -F "cv=@/path/to/cv.pdf"
 ```
 
 **Odpowiedź (200 OK):**
 ```json
 {
-  "model": "pymupdf4llm",
-  "text": "# Jan Kowalski\n\n..."
-}
-```
-
-Pole `model` przyjmuje wartości: `pymupdf4llm` (standardowy parser) lub `tesseract` (OCR fallback).
-
-**Błąd — nieobsługiwany format (415):**
-```json
-{
-  "detail": "application/msword is not allowed, allowed types: PDF, TXT, JPG, PNG, DOCX"
+  "model": "qwen2.5-vl-7b",
+  "cv": {
+    "experience": [
+      {
+        "title": "Software Engineer",
+        "company": "Tech Corp",
+        "description": ["Developed REST APIs", "Managed databases"],
+        "technologies": ["Python", "FastAPI", "PostgreSQL"]
+      }
+    ],
+    "education": [
+      {
+        "degree": "BSc",
+        "field": "Computer Science",
+        "institution": "University",
+        "notes": null
+      }
+    ],
+    "skills": {
+      "programming_languages": ["Python", "SQL"],
+      "frameworks_and_libraries": ["FastAPI"],
+      "tools_and_platforms": ["Docker", "PostgreSQL"],
+      "other": ["Agile"]
+    },
+    "extras": []
+  }
 }
 ```
 
@@ -98,18 +115,53 @@ Pole `model` przyjmuje wartości: `pymupdf4llm` (standardowy parser) lub `tesser
 
 ```
 pdf_parser/
-├── main.py              # Endpoint FastAPI + logika routingu
-├── criterias.py         # Heurystyki detekcji skanów + czyszczenie tekstu
-├── check_types.py       # Walidacja MIME type pliku wejściowego
-├── tesseract_parser.py  # OCR przez Tesseract (PDF i obrazki)
-├── ollama_ocr.py        # (Eksperymentalny) OCR przez lokalny model Ollama
-├── requirements.txt     # Zależności Pythona
-├── Dockerfile
-└── docker-compose.yaml
+├── main.py              # Endpoint FastAPI + PDF → Qwen pipeline
+├── vision_extractor.py  # Qwen2.5-VL integration + merge_cv_data()
+├── cv_schema.py         # Pydantic schema (CVData)
+├── cv_extractor.py      # (stary, nie używany) Text → JSON
+├── prompt.py            # Prompty dla Qwen + CV parser
+├── criterias.py         # Unicode cleaning
+├── requirements.txt     # Zależności
+└── tests/               # Testy
 ```
 
 ---
 
-## ⚙️ Zmienne środowiskowe
+## 🔧 Konfiguracja
 
-Projekt nie wymaga konfiguracji do basic usage. Jeśli chcesz zmienić port lub ustawienia CORS przed deployem produkcyjnym, edytuj `docker-compose.yaml` oraz `main.py` (sekcja `CORSMiddleware`).
+### Zmienne środowiskowe
+
+Brak wymaganych zmiennych. Opcjonalnie:
+
+- `OLLAMA_HOST`: URL serwera Ollama (domyślnie: `http://localhost:11434`)
+- `QWEN_MODEL`: Nazwa modelu (domyślnie: `qwen2.5-vl-7b`)
+
+### CORS (przed deployem prod)
+
+Edytuj `main.py` - linia `allow_origins=["*"]`:
+
+```python
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["https://yourdomain.com"],  # Zmień tutaj
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+```
+
+---
+
+## 📝 cv_schema
+
+Dostępne pola w odpowiedzi:
+
+```python
+class CVData:
+    experience: List[ExperienceEntry]
+    education: List[EducationEntry]
+    skills: Skills
+    extras: List[ExtraCategory]
+```
+
+Szczegóły w `cv_schema.py`.
