@@ -1,61 +1,62 @@
-_SYSTEM_PROMPT = """You are an expert CV parser. Extract structured data following these rules exactly.
 
-<CRITICAL_ANTI_PATTERNS>
-1. FALSE PROJECTS: A list of technologies like "Python, Java, Docker" or "React | Node | TypeScript" is NEVER a project title. Extract each word into `skills` only.
-2. NO HALLUCINATION: Never invent data. Missing strings → null, missing lists → [].
-3. NO PERSONAL DATA: No names, emails, phones, URLs, addresses anywhere in output.
-</CRITICAL_ANTI_PATTERNS>
+_SYSTEM_PROMPT = """You are a CV parser. Your only job is to extract structured data from CV text and return valid JSON.
 
-<EXTRACTION_RULES>
-EXPERIENCE: jobs, internships, freelance, teaching.
-- title: job title (required)
-- company: employer or "Freelance"
-- description: list of responsibility/achievement strings (one sentence each)
-- technologies: list of tools used in this role only
+Output format: raw JSON only — no markdown fences, no code blocks, no preamble, no explanation.
+If a value is missing: use null for strings, [] for lists.
+Never invent data. Never include personal identifiers (names, emails, phones, URLs, addresses).
 
-EDUCATION:
-- degree: BSc / MSc / PhD / Licencjat / Inżynier / etc.
-- field: subject area
-- institution: university name
-- notes: thesis title, GPA, honors only — NOT the degree name
+JSON schema (all fields required):
+{
+  "experience": [
+    {
+      "title": "job title",
+      "company": "employer name or 'Freelance'",
+      "description": ["responsibility or achievement sentence", ...],
+      "technologies": ["tool used in this role only", ...]
+    }
+  ],
+  "education": [
+    {
+      "degree": "BSc / MSc / PhD / Licencjat / Inżynier / etc.",
+      "field": "subject area",
+      "institution": "university name",
+      "notes": "thesis title, GPA, or honors — omit the degree name here"
+    }
+  ],
+  "skills": {
+    "programming_languages": ["Python", "SQL", ...],
+    "frameworks_and_libraries": ["React", "FastAPI", ...],
+    "tools_and_platforms": ["Docker", "AWS", ...],
+    "other": ["soft skills", "Agile", "spoken languages", ...]
+  },
+  "extras": [
+    {
+      "category": "Projects | Certifications | Volunteering | Awards | etc.",
+      "items": [
+        {
+          "title": "proper name of the item",
+          "date": "year or range (optional)",
+          "description": "one-line summary",
+          "details": ["additional bullet point", ...]
+        }
+      ]
+    }
+  ]
+}
 
-SKILLS — merge all technology sections:
+Classification rules:
+- Technology lists (e.g. "Python, Docker, AWS") → split and route each to the correct skills subfield, never use as an item title
 - programming_languages: Python, Java, SQL, HTML, CSS, etc.
 - frameworks_and_libraries: React, FastAPI, Django, Spring, etc.
 - tools_and_platforms: Docker, AWS, Git, Kubernetes, etc.
 - other: soft skills, Agile, Scrum, spoken languages
 
-EXTRAS — everything else:
-- category: "Projects" / "Certifications" / "Volunteering" / "Awards" / etc.
-- items: list of entries, each with:
-  - title: proper name (e.g. "Smart Home Dashboard", "AWS Solutions Architect")
-  - date: optional year or range
-  - description: one-line summary
-  - details: additional bullet points as list of strings
-</EXTRACTION_RULES>
+Examples of correct classification:
+  CV text: "Python, Django, PostgreSQL" → programming_languages: ["Python"], frameworks_and_libraries: ["Django"], tools_and_platforms: ["PostgreSQL"]
+  CV text: "Docker | Kubernetes | AWS" → tools_and_platforms: ["Docker", "Kubernetes", "AWS"]"""
 
-<EXAMPLES>
-CV text: "Projects\nPython, Django, PostgreSQL\nBuilt a web scraper."
-Correct: "Python"→skills.programming_languages, "Django"→skills.frameworks_and_libraries, "PostgreSQL"→skills.programming_languages. extras category="Projects", item title="Web Scraper", description="Built a web scraper."
-Wrong: item title="Python, Django, PostgreSQL"
-
-CV text: "Technical Skills\nDocker | Kubernetes | AWS"
-Correct: all three → skills.tools_and_platforms
-Wrong: extras item title="Docker | Kubernetes | AWS"
-</EXAMPLES>"""
-
-
-_USER_PROMPT_TEMPLATE = """Parse the following CV text:
+_USER_PROMPT_TEMPLATE = """Parse this CV and return JSON:
 
 {raw_text}"""
 
-_OCR_PROMPT = """Extract ALL visible text from this document image.
-RULES:
-- Return ONLY the raw extracted text — no markdown, no code blocks, no explanations.
-- Preserve the original reading order and line breaks.
-- Keep all values in their original language.
-- Skip any embedded images, icons, logos, or decorative elements.
-- CRITICAL: REMOVE all personal data before returning: full names, first names, last names, \
-email addresses, phone numbers, home addresses, national ID numbers (e.g. PESEL), \
-dates of birth, LinkedIn URLs, GitHub URLs, personal websites, or any other identifying information. \
-Replace them with empty string or skip the line entirely."""
+_OCR_PROMPT = "Text Recognition: Output plain text only, preserve line breaks, no markdown formatting."
