@@ -1,0 +1,8 @@
+fastapi==0.135.1
+python-magic==0.4.27
+uvicorn==0.42.0
+python-multipart==0.0.22
+pymupdf4llm==1.27.2.3
+pydantic==2.12.5
+ollama==0.6.1
+requests>=2.31.0
