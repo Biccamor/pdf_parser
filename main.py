@@ -84,7 +84,7 @@ async def parse_cv(cv: UploadFile = File(...)):
 
         if is_scanned_pdf(md_text, page_count):
             logger.info("Scanned PDF detected — processing with GLM OCR")
-            model_name = "glm-ocr + qwen3.6:35b-a3b"
+            model_name = "glm-ocr + gemma4"
             raw_text = ""
             with fitz.open(path_file) as doc:
                 for i, page in enumerate(doc): #type: ignore
@@ -98,7 +98,7 @@ async def parse_cv(cv: UploadFile = File(...)):
                         os.unlink(page_jpg)
         else:
             logger.info("Digital PDF detected — processing with pymupdf4llm")
-            model_name = "pymupdf4llm + qwen3.6:35b-a3b"
+            model_name = "pymupdf4llm + gemma4"
             raw_text = md_text
 
         raw_text = delete_others_unicode(raw_text)

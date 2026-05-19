@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 
 
 
-async def extract_cv_structure(raw_text: str, model: str = "qwen3.6:35b-a3b") -> dict:
+async def extract_cv_structure(raw_text: str, model: str = "gemma4:latest") -> dict:
     """Strukturyzuje surowy tekst CV do słownika zgodnego z CVData. Nie zwraca żadnych danych osobowych."""
     if not raw_text.strip():
         return CVData().model_dump()
