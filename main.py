@@ -44,8 +44,8 @@ def merge_cv_pages(cv_pages: list[dict]) -> dict:
             logger.warning(f"Failed to merge page: {e}")
 
     # deduplikacja
-    merged.experience = list({e.title: e for e in merged.experience}.values())
-    merged.education = list({e.degree: e for e in merged.education}.values())
+    merged.experience = list({(e.title, e.company, e.start): e for e in merged.experience}.values())
+    merged.education = list({(e.degree, e.institution): e for e in merged.education}.values())
     merged.skills.programming_languages = list(set(merged.skills.programming_languages))
     merged.skills.frameworks_and_libraries = list(set(merged.skills.frameworks_and_libraries))
     merged.skills.tools_and_platforms = list(set(merged.skills.tools_and_platforms))
@@ -94,4 +94,4 @@ async def parse_cv(cv: UploadFile = File(...)):
     finally:
         os.unlink(path_file)
 
-    return {"model": "qwen2.5-vl-7b", "cv": final}
+    return {"model":"internvl2.5:26b-q4_K_M", "cv": final}

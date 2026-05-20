@@ -3,11 +3,11 @@ import base64
 from pydantic import ValidationError
 import requests
 from cv_schema import CVData
-from prompt import _QWEN_VISION_SYSTEM_PROMPT, _QWEN_VISION_USER_PROMPT
+from prompt import _VISION_SYSTEM_PROMPT, _VISION_USER_PROMPT
 
 logger = logging.getLogger(__name__)
 
-async def extract_cv_with_vision(image_path: str, model: str = "qwen2.5-vl-7b") -> dict:
+async def extract_cv_with_vision(image_path: str, model: str = "internvl2.5:26b-q4_K_M") -> dict:
     try:
         with open(image_path, "rb") as f:
             image_base64 = base64.b64encode(f.read()).decode("utf-8")
@@ -18,8 +18,8 @@ async def extract_cv_with_vision(image_path: str, model: str = "qwen2.5-vl-7b") 
     payload = {
         "model": model,
         "messages": [
-            {"role": "system", "content": _QWEN_VISION_SYSTEM_PROMPT},
-            {"role": "user", "content": _QWEN_VISION_USER_PROMPT, "images": [image_base64]},
+            {"role": "system", "content": _VISION_SYSTEM_PROMPT},
+            {"role": "user", "content": _VISION_USER_PROMPT, "images": [image_base64]},
         ],
         "stream": False,
         "format": CVData.model_json_schema(),
