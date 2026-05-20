@@ -1,74 +1,60 @@
-# -*- coding: utf-8 -*-
-import re
+import os
+import sys
 import tempfile
 import logging
-import os
 from contextlib import asynccontextmanager
 
 import fitz
 from fastapi import FastAPI, UploadFile, File, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
-from vision_extractor import extract_text_from_assembled
-import sys
+from cv_schema import CVData
+from vision_extractor import extract_cv_with_vision
 
 logging.basicConfig(level=logging.INFO, handlers=[logging.StreamHandler(sys.stdout)])
 logger = logging.getLogger(__name__)
 
 
-def clean_cv_markdown(text: str) -> str:
-    """Clean markdown artifacts from CV text."""
-    # Remove inline backticks
-    text = re.sub(r'`([^`]+)`', r'\1', text)
-    # Remove markdown headers
-    text = re.sub(r'#{1,6}\s+\*{0,2}(.*?)\*{0,2}\s*$', r'\1', text, flags=re.MULTILINE)
-    # Remove hashtag tags at end of lines
-    text = re.sub(r'(?:\s+#\S+)+\s*$', '', text, flags=re.MULTILINE)
-    # Remove bold and italic
-    text = re.sub(r'\*\*(.+?)\*\*', r'\1', text)
-    text = re.sub(r'\*(.+?)\*', r'\1', text)
-    # Remove remaining backticks
-    text = re.sub(r'`+', '', text)
-    # Normalize multiple newlines
-    text = re.sub(r'\n{3,}', '\n\n', text)
-    # Normalize multiple spaces
-    text = re.sub(r'[ \t]{2,}', ' ', text)
-    
-    return text.strip()
+def render_page_as_image(pdf_path: str, page_num: int, dpi: int = 200) -> str:
+    with fitz.open(pdf_path) as doc:
+        page = doc[page_num]
+        mat = fitz.Matrix(dpi / 72, dpi / 72)
+        pix = page.get_pixmap(matrix=mat)
+        fd, path = tempfile.mkstemp(suffix=".jpg")
+        os.close(fd)
+        pix.save(path, jpg_quality=95)
+        return path
 
 
-_docling_available = False
-_process_pdf_with_docling = None
-
-try:
-    from docling_processor import initialize_docling_converter, process_pdf_with_docling
-    _docling_available = True
-except ImportError:
-    logger.warning("Docling not installed - layout detection disabled")
-
-
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    """FastAPI lifespan context manager: initialize Docling at startup."""
-    logger.info("Starting FastAPI app")
-    if _docling_available:
+def merge_cv_pages(cv_pages: list[dict]) -> dict:
+    merged = CVData()
+    for page_data in cv_pages:
+        if not page_data:
+            continue
         try:
-            from docling_processor import initialize_docling_converter
-            initialize_docling_converter()
-            logger.info("Docling initialized successfully")
+            page_cv = CVData.model_validate(page_data)
+            merged.experience.extend(page_cv.experience)
+            merged.education.extend(page_cv.education)
+            merged.skills.programming_languages.extend(page_cv.skills.programming_languages)
+            merged.skills.frameworks_and_libraries.extend(page_cv.skills.frameworks_and_libraries)
+            merged.skills.tools_and_platforms.extend(page_cv.skills.tools_and_platforms)
+            merged.skills.other.extend(page_cv.skills.other)
+            merged.extras.extend(page_cv.extras)
         except Exception as e:
-            logger.error(f"Failed to initialize Docling: {e}")
-            logger.warning("Proceeding without Docling - layout detection disabled")
-    else:
-        logger.warning("Docling not available - layout detection disabled")
-    
-    yield
-    
-    logger.info("Shutting down FastAPI app")
+            logger.warning(f"Failed to merge page: {e}")
+
+    # deduplikacja
+    merged.experience = list({e.title: e for e in merged.experience}.values())
+    merged.education = list({e.degree: e for e in merged.education}.values())
+    merged.skills.programming_languages = list(set(merged.skills.programming_languages))
+    merged.skills.frameworks_and_libraries = list(set(merged.skills.frameworks_and_libraries))
+    merged.skills.tools_and_platforms = list(set(merged.skills.tools_and_platforms))
+    merged.skills.other = list(set(merged.skills.other))
+
+    return merged.model_dump()
 
 
-app = FastAPI(lifespan=lifespan)
-
+app = FastAPI()
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -81,23 +67,11 @@ app.add_middleware(
 
 @app.post("/parser")
 async def parse_cv(cv: UploadFile = File(...)):
-    """
-    Parse CV using Docling layout detection + Qwen region-aware extraction.
-    
-    Flow:
-    1. Validate PDF header
-    2. Save to temp file
-    3. Extract layout with Docling (if available)
-    4. Crop regions and send to Qwen (region-appropriate prompts)
-    5. Assemble region texts
-    6. Send assembled text to Qwen for final structured extraction
-    7. Return CVData JSON
-    """
     header = await cv.read(4)
     if header != b"%PDF":
         raise HTTPException(status_code=400, detail="Only PDF files are accepted.")
     await cv.seek(0)
-    
+
     fd, path_file = tempfile.mkstemp(suffix=".pdf")
     try:
         with os.fdopen(fd, "wb") as f:
@@ -105,28 +79,19 @@ async def parse_cv(cv: UploadFile = File(...)):
 
         with fitz.open(path_file) as doc:
             page_count = len(doc)
-            
-        if not _docling_available:
-            logger.warning("Docling not available - using fallback extraction")
-            from cv_schema import CVData
-            return {"model": "qwen2.5-vl-7b (fallback)", "cv": CVData().model_dump()}
-        
-        logger.info(f"Processing PDF with {page_count} page(s) using Docling + Qwen2.5-VL")
-        
-        assembled_text = await process_pdf_with_docling(path_file, model="qwen2.5vl:7b")
-        
-        if not assembled_text.strip():
-            logger.warning("No text extracted from Docling regions")
-            from cv_schema import CVData
-            return {"model": "qwen2.5-vl-7b (docling)", "cv": CVData().model_dump()}
-        
-        logger.info(f"Extracted {len(assembled_text)} chars from regions")
-        logger.info("Sending assembled text to Qwen for final parsing")
-        
-        cv_data = await extract_text_from_assembled(assembled_text, model="qwen2.5-vl-7b")
-        logger.info("CV structure extracted successfully")
+
+        all_pages = []
+        for page_num in range(page_count):
+            image_path = render_page_as_image(path_file, page_num)
+            try:
+                cv_data = await extract_cv_with_vision(image_path)
+                all_pages.append(cv_data)
+            finally:
+                os.unlink(image_path)
+
+        final = merge_cv_pages(all_pages)
 
     finally:
         os.unlink(path_file)
 
-    return {"model": "qwen2.5-vl-7b (docling)", "cv": cv_data}
+    return {"model": "qwen2.5-vl-7b", "cv": final}
