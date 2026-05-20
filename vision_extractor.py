@@ -1,7 +1,7 @@
 import logging
 import base64
 from pydantic import ValidationError
-import requests
+import httpx
 from cv_schema import CVData
 from prompt import _VISION_SYSTEM_PROMPT, _VISION_USER_PROMPT
 
@@ -27,10 +27,11 @@ async def extract_cv_with_vision(image_path: str, model: str = "qwen2.5-vl-7b") 
     }
 
     try:
-        response = requests.post("http://localhost:11434/api/chat", json=payload, timeout=120)
+        async with httpx.AsyncClient() as client:
+            response = await client.post("http://localhost:11434/api/chat", json=payload, timeout=120)
         response.raise_for_status()
         raw_response = response.json().get("message", {}).get("content", "")
-    except requests.exceptions.RequestException as e:
+    except httpx._exceptions.HTTPError as e:
         logger.error(f"Ollama request failed: {e}")
         return CVData().model_dump()
 
