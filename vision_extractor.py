@@ -7,7 +7,7 @@ from prompt import _VISION_SYSTEM_PROMPT, _VISION_USER_PROMPT
 
 logger = logging.getLogger(__name__)
 
-async def extract_cv_with_vision(image_path: str, model: str = "internvl2.5:26b-q4_K_M") -> dict:
+async def extract_cv_with_vision(image_path: str, model: str = "qwen2.5-vl-7b") -> dict:
     try:
         with open(image_path, "rb") as f:
             image_base64 = base64.b64encode(f.read()).decode("utf-8")
