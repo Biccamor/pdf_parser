@@ -124,3 +124,73 @@ Classification rules:
 
 _QWEN_VISION_USER_PROMPT = """Analyze this CV image and extract all relevant professional information.
 Return ONLY valid JSON matching the schema. No markdown, no explanation, no preamble."""
+
+
+_QWEN_TEXT_PROMPT = """Extract and preserve all text from this image. Return plain text only.
+Preserve formatting, line breaks, and structure. No markdown, no code blocks."""
+
+_QWEN_TABLE_PROMPT = """Extract data from this table as markdown. 
+Format as a markdown table with proper pipes (|) and headers. Include all rows and columns.
+Return ONLY the markdown table, no explanation."""
+
+_QWEN_SECTION_HEADER_PROMPT = """Extract the section title/header text from this image.
+Return ONLY the header text, no explanation. Keep exact formatting and case."""
+
+
+_ASSEMBLED_TEXT_PROMPT_TEMPLATE = """You are a CV parser. Extract structured data from this assembled CV text.
+The text is organized by region type (e.g., [HEADER], [TABLE], [TEXT]).
+
+Extract and structure according to this schema:
+{
+  "experience": [
+    {{
+      "title": "job title",
+      "company": "employer name or 'Freelance'",
+      "start": "year or date (optional)",
+      "end": "year or date (optional)",
+      "location": "city or location (optional)",
+      "description": ["responsibility or achievement", ...],
+      "technologies": ["tool used in this role only", ...]
+    }}
+  ],
+  "education": [
+    {{
+      "degree": "BSc / MSc / PhD / Licencjat / Inzynier / etc.",
+      "field": "subject area",
+      "institution": "university name",
+      "start": "year (optional)",
+      "end": "year (optional)",
+      "notes": "thesis title, GPA, or honors - omit degree name"
+    }}
+  ],
+  "skills": {{
+    "programming_languages": ["Python", "SQL", ...],
+    "frameworks_and_libraries": ["React", "FastAPI", ...],
+    "tools_and_platforms": ["Docker", "AWS", ...],
+    "other": ["soft skills", "Agile", "spoken languages", ...]
+  }},
+  "extras": [
+    {{
+      "category": "Projects | Certifications | Volunteering | Awards | etc.",
+      "items": [
+        {{
+          "title": "proper name of the item",
+          "date": "year or range (optional)",
+          "description": "one-line summary",
+          "details": ["additional bullet point", ...]
+        }}
+      ]
+    }}
+  ]
+}}
+
+Rules:
+- Never include personal identifiers (names, emails, phones, URLs, addresses)
+- Use null for missing strings, [] for missing lists
+- Never invent data
+- Route skills correctly: programming_languages, frameworks_and_libraries, tools_and_platforms, other
+- Return ONLY valid JSON, no markdown fences, no explanation
+
+Assembled CV text:
+
+{raw_text}"""

@@ -82,7 +82,64 @@ async def extract_cv_with_vision(image_path: str, model: str = "qwen2.5-vl-7b") 
         return CVData().model_dump()
 
 
-async def merge_cv_data(cv_pages: list[dict]) -> dict:
+async def extract_text_from_assembled(raw_text: str, model: str = "qwen2.5-vl-7b") -> dict:
+    """
+    Send assembled region text to Qwen for final structured CV extraction.
+    
+    Args:
+        raw_text: assembled text from all regions (no images)
+        model: model name in Ollama
+    
+    Returns:
+        CVData dict or empty CVData if parsing fails
+    """
+    if not raw_text.strip():
+        logger.warning("Empty assembled text")
+        return CVData().model_dump()
+    
+    from prompt import _ASSEMBLED_TEXT_PROMPT_TEMPLATE
+    prompt = _ASSEMBLED_TEXT_PROMPT_TEMPLATE.format(raw_text=raw_text)
+    
+    payload = {
+        "model": model,
+        "messages": [
+            {
+                "role": "user",
+                "content": prompt,
+            }
+        ],
+        "stream": False,
+        "format": CVData.model_json_schema(),
+        "options": {"temperature": 0, "num_ctx": 16384},
+    }
+    
+    try:
+        response = requests.post(
+            "http://localhost:11434/api/chat",
+            json=payload,
+            timeout=120,
+        )
+        response.raise_for_status()
+        result = response.json()
+        raw_response = result.get("message", {}).get("content", "")
+    except requests.exceptions.RequestException as e:
+        logger.error(f"Ollama request failed: {e}")
+        return CVData().model_dump()
+    
+    if not raw_response.strip():
+        logger.warning("Empty response from Qwen model")
+        return CVData().model_dump()
+    
+    logger.info(f"Qwen raw response ({len(raw_response)} chars): {raw_response[:500]}")
+    
+    try:
+        return CVData.model_validate_json(raw_response).model_dump()
+    except ValidationError as e:
+        logger.warning(f"Failed to parse Qwen response: {e}")
+        return CVData().model_dump()
+
+
+
     """
     Merge data from multiple CV pages into one structure.
     
