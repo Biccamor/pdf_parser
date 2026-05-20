@@ -113,7 +113,7 @@ async def parse_cv(cv: UploadFile = File(...)):
         
         logger.info(f"Processing PDF with {page_count} page(s) using Docling + Qwen2.5-VL")
         
-        assembled_text = await process_pdf_with_docling(path_file, model="qwen2.5-vl-7b")
+        assembled_text = await process_pdf_with_docling(path_file, model="qwen2.5vl:7b")
         
         if not assembled_text.strip():
             logger.warning("No text extracted from Docling regions")
