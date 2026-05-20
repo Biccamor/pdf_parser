@@ -79,21 +79,21 @@ def extract_layout_regions(pdf_path: str) -> dict:
     items_to_process = []
     
     # Texts (includes TextItem, SectionHeaderItem, etc.)
-    for item in doc.texts:
+    for item in doc.document.texts:
         if hasattr(item, 'prov') and item.prov:
             page_no = item.prov[0].page_no if item.prov else None
             if page_no is not None and hasattr(item, 'bbox') and item.bbox:
                 items_to_process.append((page_no, item))
     
     # Tables
-    for item in doc.tables:
+    for item in doc.document.tables:
         if hasattr(item, 'prov') and item.prov:
             page_no = item.prov[0].page_no if item.prov else None
             if page_no is not None and hasattr(item, 'bbox') and item.bbox:
                 items_to_process.append((page_no, item))
     
     # Pictures
-    for item in doc.pictures:
+    for item in doc.document.pictures:
         if hasattr(item, 'prov') and item.prov:
             page_no = item.prov[0].page_no if item.prov else None
             if page_no is not None and hasattr(item, 'bbox') and item.bbox:
