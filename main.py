@@ -65,33 +65,43 @@ app.add_middleware(
 )
 
 
+import traceback
+
 @app.post("/parser")
 async def parse_cv(cv: UploadFile = File(...)):
-    header = await cv.read(4)
-    if header != b"%PDF":
-        raise HTTPException(status_code=400, detail="Only PDF files are accepted.")
-    await cv.seek(0)
-
-    fd, path_file = tempfile.mkstemp(suffix=".pdf")
     try:
-        with os.fdopen(fd, "wb") as f:
-            f.write(await cv.read())
+        header = await cv.read(4)
+        if header != b"%PDF":
+            raise HTTPException(status_code=400, detail="Only PDF files are accepted.")
+        await cv.seek(0)
 
-        with fitz.open(path_file) as doc:
-            page_count = len(doc)
+        fd, path_file = tempfile.mkstemp(suffix=".pdf")
+        try:
+            with os.fdopen(fd, "wb") as f:
+                f.write(await cv.read())
 
-        all_pages = []
-        for page_num in range(page_count):
-            image_path = render_page_as_image(path_file, page_num)
-            try:
-                cv_data = await extract_cv_with_vision(image_path)
-                all_pages.append(cv_data)
-            finally:
-                os.unlink(image_path)
+            with fitz.open(path_file) as doc:
+                page_count = len(doc)
 
-        final = merge_cv_pages(all_pages)
+            all_pages = []
+            for page_num in range(page_count):
+                image_path = render_page_as_image(path_file, page_num)
+                try:
+                    cv_data = await extract_cv_with_vision(image_path)
+                    all_pages.append(cv_data)
+                finally:
+                    os.unlink(image_path)
 
-    finally:
-        os.unlink(path_file)
+            final = merge_cv_pages(all_pages)
 
-    return {"model":"internvl2.5:26b-q4_K_M", "cv": final}
+        finally:
+            os.unlink(path_file)
+
+        return {"model": "qwen2.5-vl-7b", "cv": final}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Unhandled error: {e}")
+        logger.error(traceback.format_exc())
+        raise HTTPException(status_code=500, detail=str(e))
