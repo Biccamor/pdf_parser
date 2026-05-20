@@ -2,11 +2,14 @@
 
 import json
 import io
+import os
+import tempfile
 
 import pytest
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch, AsyncMock
 
 from fastapi.testclient import TestClient
+import fitz
 
 from main import app
 from cv_schema import CVData
@@ -17,10 +20,6 @@ client = TestClient(app)
 
 def _make_pdf_bytes(text_content: str = "") -> bytes:
     """Tworzy minimalny poprawny PDF z podanym tekstem (lub pusty)."""
-    # Minimalny PDF — header + pusty content stream
-    # Wystarczający by przejść walidację %PDF header
-    import fitz
-
     doc = fitz.open()
     page = doc.new_page()
     if text_content:
@@ -51,74 +50,68 @@ class TestParserEndpoint:
         response = client.post("/parser", files=files)
         assert response.status_code == 400
 
-    @patch("main.extract_cv_structure")
-    @patch("main.pymupdf4llm")
-    def test_digital_pdf_uses_pymupdf_path(self, mock_pymupdf4llm, mock_extract):
-        """Cyfrowy PDF (dużo tekstu) → ścieżka pymupdf4llm."""
-        long_text = "Education Warsaw University " * 50  # >100 chars/page
-        mock_pymupdf4llm.to_markdown.return_value = long_text
-        mock_extract.return_value = CVData().model_dump()
+    def test_pdf_header_check_reads_first_4_bytes(self):
+        """Plik zaczynający się od %PDF ale z bzdurami dalej — przechodzi walidację header,
+        ale fitz (PyMuPDF) rzuci błąd przy otwieraniu.
+        """
+        content = b"%PDF-1.4 garbage content"
+        files = _make_upload(content)
+        with pytest.raises(fitz.FileDataError):
+            client.post("/parser", files=files)
 
-        pdf_bytes = _make_pdf_bytes("Some real text content here for testing purposes and more text")
+    @patch("main._docling_available", False)
+    def test_fallback_when_docling_unavailable(self):
+        """Kiedy docling jest niedostępny, zwracany jest fallback model dump."""
+        pdf_bytes = _make_pdf_bytes("Some text")
         files = _make_upload(pdf_bytes)
         response = client.post("/parser", files=files)
-
+        
         assert response.status_code == 200
         data = response.json()
-        assert "pymupdf4llm" in data["model"]
-        mock_extract.assert_called_once()
+        assert data["model"] == "qwen2.5-vl-7b (fallback)"
+        assert "cv" in data
 
-    @patch("main.get_text_ollama")
-    @patch("main.extract_cv_structure")
-    @patch("main.pymupdf4llm")
-    def test_scanned_pdf_uses_ocr_path(self, mock_pymupdf4llm, mock_extract, mock_ocr):
-        """Skan (mało tekstu) → ścieżka GLM OCR."""
-        mock_pymupdf4llm.to_markdown.return_value = ""  # brak tekstu = skan
-        mock_ocr.return_value = "OCR extracted text"
-        mock_extract.return_value = CVData().model_dump()
-
-        pdf_bytes = _make_pdf_bytes()  # pusty PDF
-        files = _make_upload(pdf_bytes)
-        response = client.post("/parser", files=files)
-
-        assert response.status_code == 200
-        data = response.json()
-        assert "glm-ocr" in data["model"]
-        mock_ocr.assert_called()
-
-    @patch("main.extract_cv_structure")
-    @patch("main.pymupdf4llm")
-    def test_response_has_model_and_cv_keys(self, mock_pymupdf4llm, mock_extract):
-        """Odpowiedź zawiera klucze 'model' i 'cv'."""
-        mock_pymupdf4llm.to_markdown.return_value = "a" * 200
-        expected_cv = {
-            "education": ["MIT (2020)"],
-            "experience": [],
-            "skills": ["Python"],
-            "extra": [],
-        }
+    @patch("main._docling_available", True)
+    @patch("main.process_pdf_with_docling", new_callable=AsyncMock, create=True)
+    @patch("main.extract_text_from_assembled", new_callable=AsyncMock)
+    def test_normal_flow_with_docling(self, mock_extract, mock_process):
+        """Normalny przepływ - docling dostępny, wyciąga tekst, potem qwen wyciąga CV."""
+        mock_process.return_value = "Assembled text from regions"
+        expected_cv = CVData(experience=[], education=[]).model_dump()
         mock_extract.return_value = expected_cv
 
-        pdf_bytes = _make_pdf_bytes("Some text content")
+        pdf_bytes = _make_pdf_bytes("Some text")
         files = _make_upload(pdf_bytes)
         response = client.post("/parser", files=files)
 
+        assert response.status_code == 200
         data = response.json()
-        assert "model" in data
-        assert "cv" in data
+        assert data["model"] == "qwen2.5-vl-7b (docling)"
         assert data["cv"] == expected_cv
+        mock_process.assert_called_once()
+        mock_extract.assert_called_once_with("Assembled text from regions", model="qwen2.5-vl-7b")
 
-    @patch("main.extract_cv_structure")
-    @patch("main.pymupdf4llm")
-    def test_temp_file_cleanup(self, mock_pymupdf4llm, mock_extract):
-        """Plik tymczasowy jest usuwany po przetworzeniu."""
-        import os
-        import tempfile
+    @patch("main._docling_available", True)
+    @patch("main.process_pdf_with_docling", new_callable=AsyncMock, create=True)
+    def test_empty_text_from_docling(self, mock_process):
+        """Jeśli docling zwróci pusty tekst, zwracamy pusty słownik CV bez wołania qwen."""
+        mock_process.return_value = "   "
+        
+        pdf_bytes = _make_pdf_bytes("Some text")
+        files = _make_upload(pdf_bytes)
+        
+        with patch("main.extract_text_from_assembled", new_callable=AsyncMock) as mock_extract:
+            response = client.post("/parser", files=files)
+            
+            assert response.status_code == 200
+            data = response.json()
+            assert data["model"] == "qwen2.5-vl-7b (docling)"
+            mock_process.assert_called_once()
+            mock_extract.assert_not_called()
 
-        mock_pymupdf4llm.to_markdown.return_value = "x" * 200
-        mock_extract.return_value = CVData().model_dump()
-
-        # Śledź pliki tworzone w tempdir
+    @patch("main._docling_available", False)
+    def test_temp_file_cleanup(self):
+        """Plik tymczasowy jest usuwany po przetworzeniu, nawet w przypadku błędów."""
         created_files = []
         original_mkstemp = tempfile.mkstemp
 
@@ -132,17 +125,5 @@ class TestParserEndpoint:
             files = _make_upload(pdf_bytes)
             client.post("/parser", files=files)
 
-        # Sprawdź, że pliki zostały usunięte
         for path in created_files:
             assert not os.path.exists(path), f"Temp file not cleaned up: {path}"
-
-    def test_pdf_header_check_reads_first_4_bytes(self):
-        """Plik zaczynający się od %PDF ale z bzdurami dalej — przechodzi walidację header,
-        ale pymupdf rzuci FileDataError bo plik jest uszkodzony.
-        """
-        import pymupdf
-
-        content = b"%PDF-1.4 garbage content"
-        files = _make_upload(content)
-        with pytest.raises(pymupdf.FileDataError):
-            client.post("/parser", files=files)

@@ -3,7 +3,7 @@
 import json
 
 import pytest
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch, MagicMock, AsyncMock
 
 from fastapi import HTTPException
 from ollama import ResponseError
@@ -11,24 +11,26 @@ from ollama import ResponseError
 from cv_extractor import extract_cv_structure
 from cv_schema import CVData
 
+pytestmark = pytest.mark.anyio
+
 
 class TestExtractCvStructure:
     """Testy funkcji extract_cv_structure."""
 
-    def test_empty_text_returns_default(self):
+    async def test_empty_text_returns_default(self):
         """Pusty tekst → domyślny CVData bez wołania Ollama."""
-        result = extract_cv_structure("")
+        result = await extract_cv_structure("")
         expected = CVData().model_dump()
         assert result == expected
 
-    def test_whitespace_only_returns_default(self):
+    async def test_whitespace_only_returns_default(self):
         """Same białe znaki → domyślny CVData."""
-        result = extract_cv_structure("   \n\t  ")
+        result = await extract_cv_structure("   \n\t  ")
         expected = CVData().model_dump()
         assert result == expected
 
-    @patch("cv_extractor.chat")
-    def test_valid_response_returns_parsed_data(self, mock_chat):
+    @patch("cv_extractor.AsyncClient.chat", new_callable=AsyncMock)
+    async def test_valid_response_returns_parsed_data(self, mock_chat):
         """Poprawna odpowiedź JSON → zwraca sparsowane dane CV."""
         cv_json = json.dumps({
             "education": [
@@ -71,7 +73,7 @@ class TestExtractCvStructure:
         mock_response.message.content = cv_json
         mock_chat.return_value = mock_response
 
-        result = extract_cv_structure("some cv text")
+        result = await extract_cv_structure("some cv text")
 
         assert len(result["education"]) == 1
         assert result["education"][0]["institution"] == "Warsaw University of Technology"
@@ -81,19 +83,19 @@ class TestExtractCvStructure:
         assert len(result["extras"]) == 1
         assert result["extras"][0]["category"] == "Languages"
 
-    @patch("cv_extractor.chat")
-    def test_invalid_json_returns_default(self, mock_chat):
+    @patch("cv_extractor.AsyncClient.chat", new_callable=AsyncMock)
+    async def test_invalid_json_returns_default(self, mock_chat):
         """Niepoprawny JSON z modelu → fallback na domyślny CVData."""
         mock_response = MagicMock()
         mock_response.message.content = "this is not json at all"
         mock_chat.return_value = mock_response
 
-        result = extract_cv_structure("some cv text")
+        result = await extract_cv_structure("some cv text")
         expected = CVData().model_dump()
         assert result == expected
 
-    @patch("cv_extractor.chat")
-    def test_partial_json_fills_defaults(self, mock_chat):
+    @patch("cv_extractor.AsyncClient.chat", new_callable=AsyncMock)
+    async def test_partial_json_fills_defaults(self, mock_chat):
         """Częściowy JSON (brakujące pola) → pola domyślne uzupełnione."""
         cv_json = json.dumps({
             "education": [
@@ -119,74 +121,74 @@ class TestExtractCvStructure:
         mock_response.message.content = cv_json
         mock_chat.return_value = mock_response
 
-        result = extract_cv_structure("cv text")
+        result = await extract_cv_structure("cv text")
 
         assert len(result["education"]) == 1
         assert result["education"][0]["institution"] == "MIT"
         assert result["experience"] == []
         assert result["extras"] == []
 
-    @patch("cv_extractor.chat")
-    def test_response_error_raises_503(self, mock_chat):
+    @patch("cv_extractor.AsyncClient.chat", new_callable=AsyncMock)
+    async def test_response_error_raises_503(self, mock_chat):
         """ResponseError → HTTPException 503."""
         mock_chat.side_effect = ResponseError("model not loaded")
 
         with pytest.raises(HTTPException) as exc_info:
-            extract_cv_structure("cv text")
+            await extract_cv_structure("cv text")
         assert exc_info.value.status_code == 503
 
-    @patch("cv_extractor.chat")
-    def test_connection_error_raises_503(self, mock_chat):
+    @patch("cv_extractor.AsyncClient.chat", new_callable=AsyncMock)
+    async def test_connection_error_raises_503(self, mock_chat):
         """ConnectionError → HTTPException 503."""
         mock_chat.side_effect = ConnectionError("connection refused")
 
         with pytest.raises(HTTPException) as exc_info:
-            extract_cv_structure("cv text")
+            await extract_cv_structure("cv text")
         assert exc_info.value.status_code == 503
 
-    @patch("cv_extractor.chat")
-    def test_prompt_contains_raw_text(self, mock_chat):
+    @patch("cv_extractor.AsyncClient.chat", new_callable=AsyncMock)
+    async def test_prompt_contains_raw_text(self, mock_chat):
         """Sprawdza, że tekst CV jest zawarty w prompcie wysyłanym do modelu."""
         mock_response = MagicMock()
         mock_response.message.content = json.dumps(CVData().model_dump())
         mock_chat.return_value = mock_response
 
         raw = "UNIQUE_CV_CONTENT_12345"
-        extract_cv_structure(raw)
+        await extract_cv_structure(raw)
 
         call_args = mock_chat.call_args
         messages = call_args.kwargs.get("messages") or call_args[1].get("messages")
         user_msg = messages[1]["content"]
         assert raw in user_msg
 
-    @patch("cv_extractor.chat")
-    def test_uses_default_model(self, mock_chat):
-        """Domyślny model to mellum7b."""
+    @patch("cv_extractor.AsyncClient.chat", new_callable=AsyncMock)
+    async def test_uses_default_model(self, mock_chat):
+        """Domyślny model to gemma4:latest."""
         mock_response = MagicMock()
         mock_response.message.content = json.dumps(CVData().model_dump())
         mock_chat.return_value = mock_response
 
-        extract_cv_structure("cv text")
+        await extract_cv_structure("cv text")
 
         call_args = mock_chat.call_args
         model = call_args.kwargs.get("model") or call_args[1].get("model")
-        assert model == "mellum7b"
+        assert model == "gemma4:latest"
 
-    @patch("cv_extractor.chat")
-    def test_uses_json_schema_format(self, mock_chat):
+    @patch("cv_extractor.AsyncClient.chat", new_callable=AsyncMock)
+    async def test_uses_json_schema_format(self, mock_chat):
         """Sprawdza, że format=CVData.model_json_schema() jest przekazywany."""
         mock_response = MagicMock()
         mock_response.message.content = json.dumps(CVData().model_dump())
         mock_chat.return_value = mock_response
 
-        extract_cv_structure("cv text")
+        await extract_cv_structure("cv text")
 
         call_args = mock_chat.call_args
         fmt = call_args.kwargs.get("format") or call_args[1].get("format")
         assert fmt == CVData.model_json_schema()
 
-    @patch("cv_extractor.chat")
-    def test_extras_multiple_categories(self, mock_chat):
+    @patch("cv_extractor.AsyncClient.chat", new_callable=AsyncMock)
+    async def test_extras_multiple_categories(self, mock_chat):
         """Extras z wieloma kategoriami są poprawnie parsowane."""
         cv_json = json.dumps({
             "experience": [],
@@ -223,7 +225,7 @@ class TestExtractCvStructure:
         mock_response.message.content = cv_json
         mock_chat.return_value = mock_response
 
-        result = extract_cv_structure("cv with extras")
+        result = await extract_cv_structure("cv with extras")
 
         assert len(result["extras"]) == 3
         categories = [e["category"] for e in result["extras"]]

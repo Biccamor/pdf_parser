@@ -75,26 +75,52 @@ def extract_layout_regions(pdf_path: str) -> dict:
     
     regions_by_page = {}
     
-    # Iterate through Docling's document structure
-    for page_num, page in enumerate(doc.pages):
-        regions = []
-        for item in page.children:
-            bbox = item.bbox
-            if bbox is None:
-                continue
-            
-            label = item.__class__.__name__
-            reading_order = getattr(item, 'reading_order', 0)
-            
-            regions.append({
-                'label': label,
-                'bbox': (bbox.x0, bbox.y0, bbox.x1, bbox.y1),
-                'reading_order': reading_order,
-            })
+    # Collect all items from texts, tables, pictures with their page references
+    items_to_process = []
+    
+    # Texts (includes TextItem, SectionHeaderItem, etc.)
+    for item in doc.texts:
+        if hasattr(item, 'prov') and item.prov:
+            page_no = item.prov[0].page_no if item.prov else None
+            if page_no is not None and hasattr(item, 'bbox') and item.bbox:
+                items_to_process.append((page_no, item))
+    
+    # Tables
+    for item in doc.tables:
+        if hasattr(item, 'prov') and item.prov:
+            page_no = item.prov[0].page_no if item.prov else None
+            if page_no is not None and hasattr(item, 'bbox') and item.bbox:
+                items_to_process.append((page_no, item))
+    
+    # Pictures
+    for item in doc.pictures:
+        if hasattr(item, 'prov') and item.prov:
+            page_no = item.prov[0].page_no if item.prov else None
+            if page_no is not None and hasattr(item, 'bbox') and item.bbox:
+                items_to_process.append((page_no, item))
+    
+    # Group by page and extract regions
+    for page_no, item in items_to_process:
+        bbox = item.bbox
+        label = item.__class__.__name__
+        reading_order = getattr(item, 'reading_order', 0)
         
-        if regions:
-            regions_by_page[page_num] = sorted(regions, key=lambda r: r['reading_order'])
-            logger.info(f"Page {page_num}: {len(regions)} regions detected")
+        if page_no not in regions_by_page:
+            regions_by_page[page_no] = []
+        
+        regions_by_page[page_no].append({
+            'label': label,
+            'bbox': (bbox.x0, bbox.y0, bbox.x1, bbox.y1),
+            'reading_order': reading_order,
+        })
+    
+    # Sort regions within each page by reading order
+    for page_no in regions_by_page:
+        regions_by_page[page_no] = sorted(
+            regions_by_page[page_no], 
+            key=lambda r: r['reading_order']
+        )
+        logger.info(f"Page {page_no}: {len(regions_by_page[page_no])} regions detected")
     
     return regions_by_page
 
