@@ -70,38 +70,59 @@ import traceback
 @app.post("/parser")
 async def parse_cv(cv: UploadFile = File(...)):
     try:
+        logger.info(f"[PARSER] Starting PDF upload: {cv.filename}")
+        
         header = await cv.read(4)
         if header != b"%PDF":
+            logger.warning(f"[PARSER] Invalid PDF header: {header[:4]}")
             raise HTTPException(status_code=400, detail="Only PDF files are accepted.")
         await cv.seek(0)
+        logger.info("[PARSER] PDF header validated")
 
         fd, path_file = tempfile.mkstemp(suffix=".pdf")
         try:
             with os.fdopen(fd, "wb") as f:
-                f.write(await cv.read())
+                pdf_data = await cv.read()
+                logger.info(f"[PARSER] PDF data read: {len(pdf_data)} bytes")
+                f.write(pdf_data)
 
+            logger.info(f"[PARSER] Opening PDF: {path_file}")
             with fitz.open(path_file) as doc:
                 page_count = len(doc)
+            logger.info(f"[PARSER] PDF has {page_count} page(s)")
 
             all_pages = []
             for page_num in range(page_count):
+                logger.info(f"[PARSER] Rendering page {page_num} to image")
                 image_path = render_page_as_image(path_file, page_num)
+                logger.info(f"[PARSER] Image saved to: {image_path}")
                 try:
+                    logger.info(f"[PARSER] Calling extract_cv_with_vision for page {page_num}")
                     cv_data = await extract_cv_with_vision(image_path)
+                    logger.info(f"[PARSER] Extraction complete for page {page_num}")
                     all_pages.append(cv_data)
+                except Exception as page_err:
+                    logger.error(f"[PARSER] Error on page {page_num}: {page_err}", exc_info=True)
+                    all_pages.append({})
                 finally:
-                    os.unlink(image_path)
+                    if os.path.exists(image_path):
+                        os.unlink(image_path)
+                        logger.info(f"[PARSER] Cleaned up image: {image_path}")
 
+            logger.info(f"[PARSER] Merging {len(all_pages)} pages")
             final = merge_cv_pages(all_pages)
+            logger.info(f"[PARSER] Merge complete")
 
         finally:
-            os.unlink(path_file)
+            if os.path.exists(path_file):
+                os.unlink(path_file)
+                logger.info(f"[PARSER] Cleaned up PDF: {path_file}")
 
+        logger.info("[PARSER] Success!")
         return {"model": "qwen2.5-vl-7b", "cv": final}
 
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Unhandled error: {e}")
-        logger.error(traceback.format_exc())
+        logger.error(f"[PARSER] Unhandled error: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
