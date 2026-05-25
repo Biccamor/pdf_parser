@@ -7,7 +7,7 @@ from prompt import _VISION_SYSTEM_PROMPT, _VISION_USER_PROMPT
 
 logger = logging.getLogger(__name__)
 
-async def extract_cv_with_vision(image_path: str, model: str = "qwen3-vl:8b") -> dict:
+async def extract_cv_with_vision(image_path: str, model: str = "qwen2.5vl:7b") -> dict:
     logger.info(f"[VISION] Starting extraction from: {image_path}, model={model}")
     
     try:
@@ -36,7 +36,7 @@ async def extract_cv_with_vision(image_path: str, model: str = "qwen3-vl:8b") ->
     logger.info(f"[VISION] Payload ready, model={model}")
 
     try:
-        logger.info(f"[VISION] Posting to http://ollama:11434/api/chat (timeout=120s)")
+        logger.info(f"[VISION] Posting to http://ollama:11434/api/chat (timeout=400s)")
         async with httpx.AsyncClient() as client:
             response = await client.post("http://ollama:11434/api/chat", json=payload, timeout=120)
         logger.info(f"[VISION] Response status: {response.status_code}")
