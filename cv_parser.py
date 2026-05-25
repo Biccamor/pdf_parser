@@ -21,8 +21,10 @@ from typing import Optional
 # KONFIGURACJA
 # ─────────────────────────────────────────────
 
-OLLAMA_BASE_URL = "http://localhost:11434"
-OLLAMA_MODEL    = "qwen2.5-vl:7b"   # zmień na swój model
+import os
+
+OLLAMA_BASE_URL = os.getenv("OLLAMA_HOST", "http://localhost:11434")
+OLLAMA_MODEL    = "qwen3:30b-a3b"   # zmień na swój model
 OCR_LANGUAGES   = ["en"]
 MIN_TEXT_LENGTH = 80                # poniżej tej liczby znaków → traktuj stronę jako skan
 
@@ -351,7 +353,7 @@ def _call_ollama(text: str) -> str:
         headers={"Content-Type": "application/json"},
         method="POST",
     )
-    with urllib.request.urlopen(req, timeout=120) as resp:
+    with urllib.request.urlopen(req, timeout=700) as resp:
         data = json.loads(resp.read())
     return data["message"]["content"]
 

@@ -15,7 +15,7 @@ logging.basicConfig(level=logging.INFO, handlers=[logging.StreamHandler(sys.stdo
 logger = logging.getLogger(__name__)
 
 
-def render_page_as_image(pdf_path: str, page_num: int, dpi: int = 200) -> str:
+def render_page_as_image(pdf_path: str, page_num: int, dpi: int = 150) -> str:
     with fitz.open(pdf_path) as doc:
         page = doc[page_num]
         mat = fitz.Matrix(dpi / 72, dpi / 72)

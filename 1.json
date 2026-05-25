@@ -1,0 +1,4 @@
+[1/3] Ekstrakcja tekstu: 1.pdf
+[Strona 1] Mało tekstu (0 znaków) → OCR
+Błąd: Surya nie jest zainstalowane. Uruchom: pip install surya-ocr
+Potrzebne tylko dla skanowanych PDF-ów.
