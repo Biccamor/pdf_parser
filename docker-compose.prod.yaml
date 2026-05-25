@@ -1,5 +1,4 @@
 services:
-
   ollama:
     image: ollama/ollama
     container_name: ollama
@@ -12,8 +11,8 @@ services:
         reservations:
           devices:
             - driver: nvidia
-              device_ids: [ "0" ]
-              capabilities: [ gpu ]
+              device_ids: ["0"]
+              capabilities: [gpu]
 
   pdf-parser:
     build: .

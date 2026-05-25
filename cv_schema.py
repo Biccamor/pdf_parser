@@ -12,7 +12,7 @@ class EducationEntry(BaseModel):
 
 
 class ExperienceEntry(BaseModel):
-    title: str
+    title: Optional[str] = None
     company: Optional[str] = None
     start: Optional[str] = None
     end: Optional[str] = None
@@ -26,6 +26,11 @@ class Skills(BaseModel):
     frameworks_and_libraries: List[str] = Field(default_factory=list)
     tools_and_platforms: List[str] = Field(default_factory=list)
     other: List[str] = Field(default_factory=list)
+
+
+class Language(BaseModel):
+    name: str
+    level: Optional[str] = None
 
 
 class ExtraItem(BaseModel):
@@ -44,4 +49,5 @@ class CVData(BaseModel):
     experience: List[ExperienceEntry] = Field(default_factory=list)
     education: List[EducationEntry] = Field(default_factory=list)
     skills: Skills = Field(default_factory=Skills)
+    languages: List[Language] = Field(default_factory=list)
     extras: List[ExtraCategory] = Field(default_factory=list)
