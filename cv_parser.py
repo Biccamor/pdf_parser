@@ -15,7 +15,7 @@ import re
 import fitz  # pymupdf
 from pathlib import Path
 from typing import Optional
-
+import urllib.request
 
 # ─────────────────────────────────────────────
 # KONFIGURACJA
@@ -25,7 +25,7 @@ import os
 
 OLLAMA_BASE_URL = os.getenv("OLLAMA_HOST", "http://localhost:11434")
 OLLAMA_MODEL    = "qwen3:30b-a3b"   # zmień na swój model
-OCR_LANGUAGES   = ["en"]
+OCR_LANGUAGES   = ["en", "pl"]
 MIN_TEXT_LENGTH = 80                # poniżej tej liczby znaków → traktuj stronę jako skan
 
 
@@ -181,40 +181,30 @@ def _extract_text_multicolumn(page: fitz.Page) -> str:
 
     return "\n\n".join(result_parts)
 
-
 def _ocr_page(page: fitz.Page) -> str:
-    """OCR dla stron bez tekstu (skany) — Surya jako fallback."""
-    try:
-        from surya.ocr import run_ocr
-        from surya.model.detection.model import load_model as load_det_model
-        from surya.model.detection.processor import load_processor as load_det_processor
-        from surya.model.recognition.model import load_model as load_rec_model
-        from surya.model.recognition.processor import load_processor as load_rec_processor
-        from PIL import Image
-    except ImportError:
-        raise ImportError(
-            "Surya nie jest zainstalowane. Uruchom: pip install surya-ocr\n"
-            "Potrzebne tylko dla skanowanych PDF-ów."
-        )
-
-    # cache modeli — ładuj raz
-    if not hasattr(_ocr_page, "_models"):
-        print("[OCR] Ładowanie modeli Surya (jednorazowo)...")
-        _ocr_page._models = (
-            load_det_model(), load_det_processor(),
-            load_rec_model(), load_rec_processor(),
-        )
-    det_model, det_proc, rec_model, rec_proc = _ocr_page._models
+    """OCR przez GLM-OCR w Ollama."""
+    import base64
 
     pix = page.get_pixmap(dpi=300)
-    img = Image.frombytes("RGB", [pix.width, pix.height], pix.samples)
+    img_b64 = base64.b64encode(pix.tobytes("png")).decode()
 
-    results = run_ocr(
-        [img], [OCR_LANGUAGES],
-        det_model, det_proc,
-        rec_model, rec_proc,
+    payload = json.dumps({
+        "model": "glm-ocr:latest",
+        "prompt": "Extract all text from this document image. Preserve reading order. Return only the text.",
+        "images": [img_b64],
+        "stream": False,
+    }).encode()
+
+    req = urllib.request.Request(
+        f"{OLLAMA_BASE_URL}/api/generate",
+        data=payload,
+        headers={"Content-Type": "application/json"},
+        method="POST",
     )
-    return "\n".join(line.text for line in results[0].text_lines)
+    with urllib.request.urlopen(req, timeout=800) as resp:
+        data = json.loads(resp.read())
+    return data["response"]
+
 
 
 def extract_text(pdf_path: str) -> str:
