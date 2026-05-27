@@ -1,0 +1,464 @@
+[1/3] Ekstrakcja tekstu: 5.pdf
+      Tekst zapisany: tests/5.extracted.txt
+      Wyciągnięto 8734 znaków
+[2/3] Parsowanie przez LLM (qwen3:30b-a3b)...
+[3/3] Postprocessing...
+      Gotowe.
+{
+  "cv": {
+    "experience": [
+      {
+        "title": "Senior Developer",
+        "company": "NDA",
+        "start": "10/2025",
+        "end": "still",
+        "location": "Tel Aviv, Israel",
+        "description": [
+          "Support on-going customer activities and fix existing the largest Extended Detection and Response (XDR) platform, improve overall performance, reduce technical debt."
+        ],
+        "technologies": [
+          "Java/Groovy",
+          "Spring Boot",
+          "Aerospike",
+          "ScyllaDB",
+          "GCP",
+          "Github"
+        ]
+      },
+      {
+        "title": "Senior Scala Developer",
+        "company": "NDA",
+        "start": "04/2025",
+        "end": "08/2025",
+        "location": "Chicago, USA",
+        "description": [
+          "Enhance and maintain a leading futures trading platform, support existing operations, and address missing functionalities for SaaS platform customers."
+        ],
+        "technologies": [
+          "Scala",
+          "Akka Cluster",
+          "GCP",
+          "Github"
+        ]
+      },
+      {
+        "title": "Technical Team Lead",
+        "company": "SiriusXM Holdings Inc.",
+        "start": "01/2023",
+        "end": "01/2025",
+        "location": "NY, USA",
+        "description": [
+          "Leading a team of four developers, guiding technical decisions, mentoring team members, ensuring code quality, coordinating tasks, facilitating knowledge sharing, improving development practices, fostering collaboration, and achieving efficient delivery."
+        ],
+        "technologies": [
+          "Scala",
+          "Smithy4s",
+          "http4s",
+          "Scala Cats & Effect",
+          "Amazon Kinesis",
+          "Amazon DynamoDB",
+          "Git"
+        ]
+      },
+      {
+        "title": "Software Developer",
+        "company": "tiramizoo Gmbh",
+        "start": "09/2022",
+        "end": "12/2021",
+        "location": "Munich, Germany",
+        "description": [
+          "Designing and supporting a route optimization module, improving efficiency of multi-stop, multi-vehicle planning, ensuring scalability for global use, enhancing performance of last-mile delivery, refining algorithms for daily appointments, and enabling reliable operations."
+        ],
+        "technologies": [
+          "Java",
+          "Spring",
+          "Amazon S3",
+          "Amazon Batch",
+          "Amazon DynamoDB",
+          "Git"
+        ]
+      },
+      {
+        "title": "Software Developer",
+        "company": "Topdown Corp.",
+        "start": "06/2018",
+        "end": "09/2021",
+        "location": "Rockville, Maryland",
+        "description": [
+          "Designing and developing a cloud-based CCM solution, ensuring simplicity, flexibility, security, and cost efficiency, enabling scalability with Scala, React, and Kubernetes, improving consistency of omni-channel communications, and enhancing customer experience across journeys and lifecycle."
+        ],
+        "technologies": [
+          "Scala",
+          "Akka",
+          "Dgraph",
+          "RabbitMQ",
+          "Amazon S3",
+          "Git"
+        ]
+      },
+      {
+        "title": "Research Engineer",
+        "company": "Zeidman Consulting",
+        "start": "11/2017",
+        "end": "11/2018",
+        "location": "Cupertino, CA",
+        "description": [
+          "Analyzed software source code and writes expert reports for software IP litigation."
+        ],
+        "technologies": []
+      },
+      {
+        "title": "Scala Developer",
+        "company": "Elemica",
+        "start": "02/2018",
+        "end": "12/2013",
+        "location": "Atlanta, Georgia",
+        "description": [
+          "Implementing a new global supply chain operating network, connecting suppliers worldwide, leveraging Scala and Lift framework, improving communication and data exchange, enhancing efficiency of operations, and enabling scalable collaboration across markets."
+        ],
+        "technologies": [
+          "Scala",
+          "Lift framework",
+          "Akka",
+          "RabbitMQ",
+          "Amazon S3",
+          "Git"
+        ]
+      },
+      {
+        "title": "Java Developer",
+        "company": "UpNext",
+        "start": "09/2013",
+        "end": "12/2012",
+        "location": "Warsaw, Poland",
+        "description": [
+          "Maintaining and extending a Push Notifications system, implementing new features, ensuring reliable message delivery to Android and iPhone apps, optimizing backend with ActiveMQ, improving scalability and performance, and supporting seamless mobile communication."
+        ],
+        "technologies": [
+          "Java",
+          "ActiveMQ",
+          "Git"
+        ]
+      },
+      {
+        "title": "Java Developer",
+        "company": "First National Bank",
+        "start": "05/2011",
+        "end": "09/2012",
+        "location": "Johannesburg, SA",
+        "description": [
+          "Developing and re-engineering a Collateral System, adding new functionalities, ensuring compliance with legal requirements, improving system reliability, enhancing data management, and supporting business operations with scalable and maintainable solutions."
+        ],
+        "technologies": [
+          "JEE 6",
+          "JSF 2.0",
+          "JPA 2.0",
+          "JBoss Server 6",
+          "JAX-WS",
+          "DB2",
+          "SVN"
+        ]
+      },
+      {
+        "title": "Java Developer",
+        "company": "SoftwareMill",
+        "start": "03/2011",
+        "end": "04/2011",
+        "location": "Warsaw, Poland",
+        "description": [
+          "Creating a Swing-based desktop client for file synchronization and designing a server REST API, ensuring seamless integration, improving usability, enhancing reliability of data exchange, and supporting efficient client-server communication."
+        ],
+        "technologies": [
+          "JSE 6",
+          "Swing",
+          "RESTeasy",
+          "TorqueBox",
+          "IntelliJ IDEA",
+          "MySQL",
+          "Amazon Cloud",
+          "Git"
+        ]
+      },
+      {
+        "title": "Java Developer",
+        "company": "Attikis",
+        "start": "02/2011",
+        "end": "10/2010",
+        "location": "Sydney, AU",
+        "description": [
+          "Developing software to monitor home alarm systems, configuring rule-based actions, enabling automatic responses such as sending SMS, email, or initiating VoIP calls, improving reliability of alerts, and supporting real-time security monitoring."
+        ],
+        "technologies": [
+          "JEE 6",
+          "JSF 2.0",
+          "JPA 2.0",
+          "JBoss Server 6/5",
+          "REST",
+          "SIP Servlet",
+          "Mobicents",
+          "Drools",
+          "IntelliJ IDEA",
+          "MySQL",
+          "Amazon Cloud",
+          "Subversion"
+        ]
+      },
+      {
+        "title": "J2EE Consultant",
+        "company": "Nykredit",
+        "start": "09/2007",
+        "end": "09/2010",
+        "location": "Copenhagen, Denamrk",
+        "description": [
+          "Developing an advice system, supporting customer needs, analyzing requirements, proposing tailored solutions, and creating a web interface to a mainframe system, enabling preparation of insurance offers for private and business clients, improving efficiency and service quality."
+        ],
+        "technologies": [
+          "J2EE 1.4",
+          "Struts 1",
+          "Hibernate 3",
+          "Axis2",
+          "IntelliJ IDEA",
+          "WebLogic 8.1",
+          "DB2",
+          "Mainframe",
+          "Windows Server 2003",
+          "CVS/Subversion"
+        ]
+      },
+      {
+        "title": "Software Developer",
+        "company": "CSC",
+        "start": "07/2007",
+        "end": "08/2007",
+        "location": "Vien, Austria",
+        "description": [
+          "Document Workflow System - created a dedicated workflow system to optimize and speed up document flow between different departments."
+        ],
+        "technologies": [
+          "Borland Delphi",
+          "JEE 5",
+          "Struts 1",
+          "Spring 2",
+          "Hibernate 3",
+          "Tomcat",
+          "Linux",
+          "SQL Server 2005",
+          "Windows Server 2003",
+          "Subversion"
+        ]
+      },
+      {
+        "title": "Software Developer",
+        "company": "Delphi Automotive Poland",
+        "start": "02/2006",
+        "end": "06/2007",
+        "location": "Jelesnia, Poland",
+        "description": [
+          "Document Workflow System - created a dedicated workflow system to optimize and speed up document flow between different departments."
+        ],
+        "technologies": [
+          "Borland Delphi",
+          "JEE 5",
+          "Struts 1",
+          "Spring 2",
+          "Hibernate 3",
+          "Tomcat",
+          "Linux",
+          "SQL Server 2005",
+          "Windows Server 2003",
+          "Subversion"
+        ]
+      },
+      {
+        "title": "Software Developer",
+        "company": "Delphi Automotive Poland",
+        "start": "01/2006",
+        "end": "09/2007",
+        "location": "Jelesnia, Poland",
+        "description": [
+          "Warehouse Management System - managed warehouse space, on-fly stocktaking, optimization of production plans."
+        ],
+        "technologies": [
+          "Borland Delphi",
+          "Windows Mobile 2003",
+          "Compact Framework",
+          "Visual Studio 2005",
+          "SQL Server 2005",
+          "Subversion"
+        ]
+      },
+      {
+        "title": "Software Developer",
+        "company": "Delphi Automotive Poland",
+        "start": "03/2005",
+        "end": "09/2005",
+        "location": "Jelesnia, Poland",
+        "description": [
+          "HR Supporting System - managed employee training and development of personal business plans."
+        ],
+        "technologies": [
+          "PHP 4",
+          "MySQL",
+          "Subversion"
+        ]
+      },
+      {
+        "title": "Software Developer",
+        "company": "Delphi Automotive Poland",
+        "start": "01/2003",
+        "end": "04/2006",
+        "location": "Jelesnia, Poland",
+        "description": [
+          "Shop Floor Efficiency Monitoring - collected and analyzed production data to generate reports for top management."
+        ],
+        "technologies": [
+          "Borland Delphi",
+          "JEE 5",
+          "Struts 1",
+          "Spring 2",
+          "Hibernate 3",
+          "Tomcat",
+          "Linux",
+          "SQL Server 2005",
+          "Windows Server 2003",
+          "Subversion"
+        ]
+      },
+      {
+        "title": "Infrastructure Engineer",
+        "company": "Delphi Automotive Poland",
+        "start": "04/1999",
+        "end": "12/2003",
+        "location": "Jelesnia, Poland",
+        "description": [
+          "Manage a company network based on Novell Netware and eDirectory, Windows NT/2000 with ActiveDirectory. Support users on daily basis, support printers and shop floor devices."
+        ],
+        "technologies": []
+      },
+      {
+        "title": "Computer Systems Engineer",
+        "company": "ZUS",
+        "start": "01/1998",
+        "end": "03/1999",
+        "location": "Sucha Beskidzka, Poland",
+        "description": [
+          "Provided network and user support"
+        ],
+        "technologies": []
+      }
+    ],
+    "education": [
+      {
+        "degree": "BSc in Computer Systems",
+        "field": null,
+        "institution": "Academy of Computer Science and Management",
+        "start": "1999",
+        "end": "2003",
+        "notes": null
+      },
+      {
+        "degree": null,
+        "field": null,
+        "institution": "Cracow University of Technology",
+        "start": "1995",
+        "end": "1998",
+        "notes": null
+      }
+    ],
+    "skills": {
+      "programming_languages": [
+        "Scala",
+        "Java",
+        "JavaScript",
+        "TypeScript",
+        "HTML5",
+        "CSS"
+      ],
+      "frameworks_and_libraries": [],
+      "tools_and_platforms": [
+        "DynamoDB",
+        "Kinesis",
+        "Lambda",
+        "Kubernetes",
+        "Docker",
+        "Dgraph",
+        "Cassandra"
+      ],
+      "other": [
+        "Team Management",
+        "Code Review",
+        "Technical Design"
+      ]
+    },
+    "languages": [
+      {
+        "name": "Polish",
+        "level": "Native"
+      },
+      {
+        "name": "English",
+        "level": "Fluent"
+      }
+    ],
+    "extras": [
+      {
+        "category": "Projects",
+        "items": [
+          {
+            "title": "The Apache Struts",
+            "date": null,
+            "description": "Apache Struts is a free, open-source, MVC framework for creating elegant, modern Java web applications. It favors convention over configuration, is extensible using a plugin architecture, and ships with plugins to support REST, AJAX and JSON.",
+            "details": []
+          },
+          {
+            "title": "OGNL",
+            "date": null,
+            "description": "OGNL stands for Object-Graph Navigation Language; it is an expression language for getting and setting properties of Java objects. You use the same expression for both getting and setting the value of a property.",
+            "details": []
+          },
+          {
+            "title": "Launch4j Maven Plugin",
+            "date": null,
+            "description": "A Maven wrapper around https://launch4j.sourceforge.net/ which allows pack JARs into executables and creates installers",
+            "details": []
+          }
+        ]
+      },
+      {
+        "category": "Publications",
+        "items": [
+          {
+            "title": "Understanding How Claude Code Works: A Deep Dive into LLM-Powered Developer Tools",
+            "date": null,
+            "description": "#AI #Programming #Scala #TypeScript",
+            "details": []
+          },
+          {
+            "title": "Migrating to Scala 3",
+            "date": null,
+            "description": "#Scala #Migration #Scala 3",
+            "details": []
+          },
+          {
+            "title": "Understanding Data Subject Requests (DSRs) and Implementing a Scalable Solution",
+            "date": null,
+            "description": "#Microservices #Architecture #Security #DSR",
+            "details": []
+          },
+          {
+            "title": "What’s New in Apache Struts 7",
+            "date": null,
+            "description": "#Java #Open Source #Apache Struts #Struts",
+            "details": []
+          },
+          {
+            "title": "How to develop secure web applications",
+            "date": null,
+            "description": "#Security #Web Applications #Web App Development #CSP #Content Security Policy",
+            "details": []
+          }
+        ]
+      }
+    ]
+  }
+}
