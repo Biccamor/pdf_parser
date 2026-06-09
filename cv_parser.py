@@ -2,9 +2,6 @@
 CV Parser — kompletny pipeline
 PDF (text/skan/wielokolumnowy) → tekst → LLM → JSON
 
-Wymagania:
-    pip install pymupdf surya-ocr ollama
-
 Użycie:
     from cv_parser import parse_cv
     result = parse_cv("cv.pdf")
@@ -12,19 +9,11 @@ Użycie:
 
 import json
 import re
-from extraction import extract_text
 from pathlib import Path
+
+from config import OLLAMA_BASE_URL, OLLAMA_MODEL
+from extraction import extract_text
 from prompt import SYSTEM_PROMPT, USER_PROMPT
-# ─────────────────────────────────────────────
-# KONFIGURACJA
-# ─────────────────────────────────────────────
-
-import os
-
-OLLAMA_BASE_URL = os.getenv("OLLAMA_HOST", "http://localhost:11434")
-OLLAMA_MODEL    = "qwen3:30b-a3b"   # zmień na swój model
-OCR_LANGUAGES   = ["en", "pl"]
-MIN_TEXT_LENGTH = 80                # poniżej tej liczby znaków → traktuj stronę jako skan
 
 
 # ─────────────────────────────────────────────

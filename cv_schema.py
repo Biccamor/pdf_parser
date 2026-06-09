@@ -51,3 +51,23 @@ class CVData(BaseModel):
     skills: Skills = Field(default_factory=Skills)
     languages: List[Language] = Field(default_factory=list)
     extras: List[ExtraCategory] = Field(default_factory=list)
+
+
+# ── Request / Response dla endpointu POST /parse ──
+
+
+class ParseRequest(BaseModel):
+    """Dane wejściowe do parsowania CV."""
+    filename: str = Field(..., description="Nazwa pliku PDF w folderze /bazy")
+    email: Optional[str] = Field(None, description="Email kandydata")
+    position: Optional[str] = Field(None, description="Stanowisko rekrutacyjne")
+    github_url: Optional[str] = Field(None, description="Link do profilu GitHub kandydata")
+
+
+class ParseResponse(BaseModel):
+    """Wynik parsowania CV z metadanymi rekrutacji."""
+    filename: str
+    email: Optional[str] = None
+    position: Optional[str] = None
+    github_url: Optional[str] = None
+    cv: CVData

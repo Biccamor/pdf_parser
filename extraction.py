@@ -1,16 +1,9 @@
 import json
-import fitz  # pymupdf
 import urllib.request
-# ─────────────────────────────────────────────
-# KONFIGURACJA
-# ─────────────────────────────────────────────
 
-import os
+import fitz  # pymupdf
 
-OLLAMA_BASE_URL = os.getenv("OLLAMA_HOST", "http://localhost:11434")
-OLLAMA_MODEL    = "qwen3:30b-a3b"   # zmień na swój model
-OCR_LANGUAGES   = ["en", "pl"]
-MIN_TEXT_LENGTH = 80                # poniżej tej liczby znaków → traktuj stronę jako skan
+from config import OLLAMA_BASE_URL, MIN_TEXT_LENGTH
 
 
 def _cluster_x_positions(x_positions: list[float], page_width: float, gap_ratio: float = 0.12) -> list[float]:
