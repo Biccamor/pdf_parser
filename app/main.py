@@ -5,9 +5,9 @@ from pathlib import Path
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
-from config import PDF_DATABASE_DIR
-from cv_parser import parse_cv
-from cv_schema import CVData, ParseRequest, ParseResponse
+from app.config import PDF_DATABASE_DIR
+from app.services.cv_parser import parse_cv
+from app.schemas.cv_schema import CVData, ParseRequest, ParseResponse
 
 # ── Logging ──
 

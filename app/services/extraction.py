@@ -3,7 +3,7 @@ import urllib.request
 
 import fitz  # pymupdf
 
-from config import OLLAMA_BASE_URL, MIN_TEXT_LENGTH
+from app.config import OLLAMA_BASE_URL, MIN_TEXT_LENGTH
 
 
 def _cluster_x_positions(x_positions: list[float], page_width: float, gap_ratio: float = 0.12) -> list[float]:

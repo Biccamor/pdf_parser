@@ -11,9 +11,9 @@ import json
 import re
 from pathlib import Path
 
-from config import OLLAMA_BASE_URL, OLLAMA_MODEL
-from extraction import extract_text
-from prompt import SYSTEM_PROMPT, USER_PROMPT
+from app.config import OLLAMA_BASE_URL, OLLAMA_MODEL
+from app.services.extraction import extract_text
+from app.prompts.prompt import SYSTEM_PROMPT, USER_PROMPT
 
 
 # ─────────────────────────────────────────────
@@ -159,8 +159,6 @@ def parse_cv(pdf_path: str, save_text: bool = False) -> dict:
     if not path.exists():
         raise FileNotFoundError(f"Plik nie istnieje: {pdf_path}")
 
-    # 1. Wyciągnij tekst
-    print(f"[1/3] Ekstrakcja tekstu: {path.name}")
     text = extract_text(str(path))
 
     if not text.strip():
@@ -169,12 +167,8 @@ def parse_cv(pdf_path: str, save_text: bool = False) -> dict:
     if save_text:
         txt_path = path.with_suffix(".extracted.txt")
         txt_path.write_text(text, encoding="utf-8")
-        print(f"      Tekst zapisany: {txt_path}")
 
-    print(f"      Wyciągnięto {len(text)} znaków")
 
-    # 2. Parsuj LLM
-    print(f"[2/3] Parsowanie przez LLM ({OLLAMA_MODEL})...")
     raw = _call_ollama(text)
 
     try:
@@ -182,11 +176,8 @@ def parse_cv(pdf_path: str, save_text: bool = False) -> dict:
     except json.JSONDecodeError as e:
         raise ValueError(f"LLM zwrócił niepoprawny JSON: {e}\n\nOdpowiedź:\n{raw[:500]}")
 
-    # 3. Postprocessing
-    print("[3/3] Postprocessing...")
     cv = postprocess(cv)
 
-    print("      Gotowe.")
     return cv
 
 
