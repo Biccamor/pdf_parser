@@ -7,6 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import PDF_DATABASE_DIR
 from app.services.cv_parser import parse_cv
+from app.services.cv_fetcher import get_next_waiting_cv, mark_as_pending
 from app.schemas.cv_schema import CVData, ParseRequest, ParseResponse
 
 # ── Logging ──
@@ -18,7 +19,7 @@ logger = logging.getLogger(__name__)
 
 app = FastAPI(
     title="CV Parser API",
-    description="Parsowanie CV z PDF → JSON przez LLM",
+    description="Parsowanie CV z PDF do JSON przez LLM",
     version="1.0.0",
 )
 
@@ -85,5 +86,57 @@ async def parse_cv_endpoint(req: ParseRequest):
         email=req.email,
         position=req.position,
         github_url=req.github_url,
+        cv=cv,
+    )
+
+
+@app.get("/fetch-and-parse", response_model=ParseResponse)
+async def fetch_and_parse_endpoint():
+    """
+    Pobierz najstarsze oczekujące CV z bazy bit_servera, sparsuj i zwróć wynik.
+
+    1. Czyta najstarszy rekord ze statusem 'waiting' z SQLite bit_servera
+    2. Parsuje PDF przez LLM
+    3. Zmienia status na 'pending'
+    4. Zwraca sparsowane CV + email + stanowisko + github
+    """
+    # Pobierz najstarsze waiting CV z bazy
+    cv_record = get_next_waiting_cv()
+
+    if cv_record is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Brak oczekujących CV w bazie danych.",
+        )
+
+    pdf_path = cv_record["cv"]  # ścieżka do pliku PDF na dysku
+
+    # Sprawdź czy plik istnieje
+    if not Path(pdf_path).exists():
+        raise HTTPException(
+            status_code=404,
+            detail=f"Plik CV '{pdf_path}' nie istnieje na dysku.",
+        )
+
+    # Parsowanie CV
+    logger.info("Parsowanie CV id=%s: %s", cv_record["id"], cv_record["cv_name"])
+    try:
+        cv_data = parse_cv(pdf_path)
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=str(e))
+    except Exception as e:
+        logger.exception("Błąd parsowania CV id=%s", cv_record["id"])
+        raise HTTPException(status_code=500, detail=f"Błąd parsowania: {e}")
+
+    cv = CVData(**cv_data)
+
+    # Oznacz jako pending po udanym parsowaniu
+    mark_as_pending(cv_record["id"])
+
+    return ParseResponse(
+        filename=cv_record["cv_name"],
+        email=cv_record.get("email"),
+        position=cv_record.get("position_name"),
+        github_url=cv_record.get("github_link"),
         cv=cv,
     )

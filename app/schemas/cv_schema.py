@@ -70,4 +70,4 @@ class ParseResponse(BaseModel):
     email: Optional[str] = None
     position: Optional[str] = None
     github_url: Optional[str] = None
-    cv: CVData
+    cv: CVData

@@ -5,3 +5,5 @@ OLLAMA_MODEL     = "qwen3:30b-a3b"
 OCR_LANGUAGES    = ["en", "pl"]
 MIN_TEXT_LENGTH  = 80
 PDF_DATABASE_DIR = os.getenv("PDF_DATABASE_DIR", "./bazy")
+BIT_SERVER_DATABASE = os.getenv("BIT_SERVER_DATABASE", "bit_server.db")
+

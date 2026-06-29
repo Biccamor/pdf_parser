@@ -24,7 +24,7 @@ def _cluster_x_positions(x_positions: list[float], page_width: float, gap_ratio:
 
 
 def _extract_text_multicolumn(page: fitz.Page) -> str: #type: ignore
-    """Wyciągnij tekst ze strony z obsługą wielu kolumn."""
+    """Wyciągnij tekst ze stronsy z obsługą wielu kolumn."""
     blocks = [b for b in page.get_text("blocks") if b[4].strip()]
     if not blocks:
         return ""
