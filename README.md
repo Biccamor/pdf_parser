@@ -8,7 +8,7 @@ Wyciąga tekst z PDF (text-layer lub OCR skanów) i przepuszcza przez LLM (Ollam
 ```
 app/
 ├── main.py                  # Endpointy FastAPI
-├── config.py                # Konfiguracja (zmienne środowiskowe, model LLM)
+├── config.py                # Konfiguracja (zmienne środowiskowe, model LLM) < UWAGA OBECNIE USTAWIONY FOLDER Z PDFAMI NA TESTS W PRZYSZLOSCI ZMIENIC NA FOLDER BAZY
 ├── prompts/
 │   └── prompt.py            # System + user prompt dla LLM
 ├── schemas/
@@ -94,6 +94,14 @@ Response:
 }
 ```
 
+Użycie na serwerze:
+
+```bash
+curl -X POST http://localhost:8010/parse \
+  -H "Content-Type: application/json" \
+  -d '{"filename": "10.pdf", "email": "test@example.com", "position": "Developer"}'
+``` 
+
 ### GET /fetch-and-parse
 
 Pobiera najstarsze CV ze statusem `waiting` z bazy bit_servera, parsuje je i zmienia status na `pending`.
@@ -107,6 +115,12 @@ Przebieg:
 5. Zwraca sparsowane CV z metadanymi (email, stanowisko, github).
 
 Format odpowiedzi jest identyczny jak w `/parse`.
+
+Użycie na serwerze:
+
+```bash
+curl -X GET http://localhost:8010/fetch-and-parse
+```
 
 ## Integracja z bit_serverem
 
