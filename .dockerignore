@@ -2,3 +2,9 @@ parser-venv/
 pdfs/
 /.env
 __pycache__/
+.git/
+.pytest_cache/
+tests/
+results/
+CV_Webhook_Server/
+*.db

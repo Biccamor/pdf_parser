@@ -17,8 +17,10 @@ services:
     ports:
       - "8010:8010"
     environment:
-      - OLLAMA_HOST=http://172.17.0.1:11434
+      - OLLAMA_HOST=http://ollama:11434
       - BIT_SERVER_DATABASE=/parser/bit_server.db
+    depends_on:
+      - ollama
 
 volumes:
   ollama_data:

@@ -43,16 +43,17 @@ def main():
         print(f"BŁĄD: Nie znaleziono testowego PDF: {PDF_PATH}")
         sys.exit(1)
 
-    # Usuń starą bazę jeśli istnieje
-    if os.path.exists(DB_NAME):
-        os.remove(DB_NAME)
-        print(f"Usunięto starą bazę: {DB_NAME}")
-
-    # Utwórz bazę
+    # Utwórz lub podłącz bazę
     engine = create_engine(f"sqlite:///{DB_NAME}")
     SQLModel.metadata.create_all(engine)
 
     with Session(engine) as session:
+        # Wyczyszczenie starych danych bez usuwania pliku
+        from sqlmodel import delete
+        session.exec(delete(DatabaseCV))
+        session.exec(delete(Statuses))
+        session.commit()
+
         # Dodaj statusy (tak jak bit_server)
         s1 = Statuses(status="waiting")
         s2 = Statuses(status="pending")

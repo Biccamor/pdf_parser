@@ -1,5 +1,5 @@
 FROM python:3.11-slim
-ENV PYTHONBUFFERED=1
+ENV PYTHONUNBUFFERED=1
 
 RUN apt-get update && apt-get install -y \
     libgl1 \
